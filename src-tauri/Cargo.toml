@@ -1,0 +1,18 @@
+[package]
+name = "central-sos"
+version = "0.1.0"
+description = "CENTRAL SOS Desktop"
+authors = ["CENTRAL SOS"]
+edition = "2021"
+[lib]
+name = "central_sos_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+sysinfo = "0.33"
+
+[target.'cfg(windows)'.dependencies]
+wmi = "0.18.4"

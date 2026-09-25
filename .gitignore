@@ -1,0 +1,26 @@
+node_modules/
+dist/
+src-tauri/target/
+
+# Environment variables and local overrides
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+
+# Local secrets and credentials
+.secrets/
+.credentials/
+secrets/
+*.secret
+*.secrets
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Operating system and generated TypeScript files
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
