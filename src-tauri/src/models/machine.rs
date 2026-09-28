@@ -40,6 +40,12 @@ pub struct NetworkAdapterSnapshot {
     pub name: String,
     pub status: Option<String>,
     pub mac: Option<String>,
+    pub physical_adapter: Option<bool>,
+    pub manufacturer: Option<String>,
+    pub product_name: Option<String>,
+    pub service_name: Option<String>,
+    pub pnp_device_id: Option<String>,
+    pub adapter_type: Option<String>,
     pub ipv4: Vec<String>,
     pub ipv6: Vec<String>,
     pub gateways: Vec<String>,
@@ -55,6 +61,9 @@ pub struct PrinterSnapshot {
     pub port: Option<String>,
     pub server: Option<String>,
     pub status: Option<String>,
+    pub local: Option<bool>,
+    pub network: Option<bool>,
+    pub shared: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

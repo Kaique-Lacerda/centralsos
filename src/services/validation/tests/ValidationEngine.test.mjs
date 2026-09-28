@@ -47,6 +47,42 @@ test('uma regra passa e outra falha conforme os dados coletados', () => {
   assert.equal(rules.find(rule => rule.id === 'server-database-file').validate(missingDb).status, 'error');
 });
 
+test('instalação do Cobian e da Nuvem é independente da comparação de versão', () => {
+  const rules = ValidationRegistry.getApplicableRules('server');
+  const cobian = [{ name: 'Cobian Backup 9', version: '9.5.1.212', versionSource: 'FileVersion de cbInterface.exe', location: 'C:\\Program Files (x86)\\Cobian Backup 9', registrySources: [{ hive: 'HKLM', view: '32-bit', key: 'CobBackup9', displayName: 'Cobian Backup 9' }] }];
+  const nube = [{ name: 'Nuvem Contábil v 1.0.29', version: '1.0.29', versionSource: 'versão informada no DisplayName do Registro', location: 'C:\\SoS Soluções\\Nuvem Contábil', registrySources: [{ hive: 'HKLM', view: '32-bit', key: 'Nuvem Contábil_is1', displayName: 'Nuvem Contábil v 1.0.29' }] }];
+  const contextFor = overrides => context(installation({ cobian, nubeContabil: nube, ...overrides }));
+  const rule = id => rules.find(candidate => candidate.id === id);
+
+  assert.equal(rule('server-cobian-installed').validate(contextFor({})).status, 'success');
+  assert.equal(rule('server-cobian-version').validate(contextFor({})).status, 'success');
+  assert.equal(rule('server-nuvem-contabil-installed').validate(contextFor({})).status, 'success');
+  assert.equal(rule('server-nuvem-contabil-version').validate(contextFor({})).status, 'success');
+
+  const differentVersions = contextFor({ cobian: [{ ...cobian[0], version: '9.5.1.215' }], nubeContabil: [{ ...nube[0], version: '1.0.30' }] });
+  assert.equal(rule('server-cobian-installed').validate(differentVersions).status, 'success');
+  assert.equal(rule('server-cobian-version').validate(differentVersions).status, 'warning');
+  assert.equal(rule('server-nuvem-contabil-installed').validate(differentVersions).status, 'success');
+  assert.equal(rule('server-nuvem-contabil-version').validate(differentVersions).status, 'warning');
+});
+
+test('versão ausente é ignorada e versões distintas entre registros geram warning', () => {
+  const rules = ValidationRegistry.getApplicableRules('server');
+  const versionRule = rules.find(candidate => candidate.id === 'server-nuvem-contabil-version');
+  const base = { name: 'Nuvem Contábil v 1.0.29', versionSource: null, location: null, registrySources: [] };
+  assert.equal(versionRule.validate(context(installation({ nubeContabil: [{ ...base, version: null }] }))).status, 'ignored');
+  assert.equal(versionRule.validate(context(installation({ nubeContabil: [{ ...base, version: '1.0.29' }, { ...base, version: '1.0.30' }] }))).status, 'warning');
+});
+
+test('IBOConsole é comparado sem diferenciar maiúsculas e ausência real falha', () => {
+  const rule = ValidationRegistry.getApplicableRules('server').find(candidate => candidate.id === 'server-ibconsole');
+  const found = rule.validate(context(installation({ ibconsoleExecutables: ['iboconSOLE.EXE'] })));
+  assert.equal(found.status, 'success');
+  assert.equal(found.expected, String.raw`C:\SoS Soluções\Troia\IBOConsole.exe`);
+  assert.equal(found.actual, 'iboconSOLE.EXE');
+  assert.equal(rule.validate(context(installation({ ibconsoleExecutables: [] }))).status, 'error');
+});
+
 test('divergência gera warning e dado não consultável fica skipped', () => {
   const printerRule = ValidationRegistry.getApplicableRules('terminal').find(rule => rule.id === 'terminal-printer-basics');
   const partialPrinter = { ...snapshot, printers: { items: [{ ...snapshot.printers.items[0], driver: null }], error: null } };

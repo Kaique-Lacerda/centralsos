@@ -7,7 +7,11 @@ function make(id: string, title: string, category: ValidationResult['category'],
 function softwareInstalled(id: string, title: string, category: ValidationResult['category'], apps: InstalledSoftware[] | undefined, error: string | null | undefined): ValidationResult {
   if (!apps) return make(id, title, category, 'ignored', error || 'A consulta de programas instalados não está disponível.', `${title} instalado`, 'Não verificável');
   if (apps.length === 0) return error ? make(id, title, category, 'ignored', error, `${title} instalado`, 'Não verificável') : make(id, title, category, 'error', `${title} não foi encontrado nas entradas consultadas do Registro do Windows.`, `${title} instalado`, 'Não encontrado');
-  const actual = apps.map(app => `${app.name}; versão ${app.version || 'não informada'}; localização ${app.location || 'não informada'}`).join(' · ');
+  const actual = apps.map(app => {
+    const sources = app.registrySources?.map(source => `${source.hive} ${source.view}`).join(', ');
+    const version = app.version ? `${app.version}${app.versionSource ? ` (${app.versionSource})` : ''}` : 'não informada';
+    return `${app.name}; versão ${version}; localização ${app.location || 'não informada'}${sources ? `; Registro ${sources}` : ''}`;
+  }).join(' · ');
   return make(id, title, category, 'success', error ? `Instalação encontrada; consulta parcial: ${error}` : 'Instalação encontrada. Versão e localização são exibidas quando informadas pelo Windows.', `${title} instalado`, actual);
 }
 
@@ -15,8 +19,10 @@ function softwareVersion(id: string, title: string, category: ValidationResult['
   if (!apps) return make(id, title, category, 'ignored', error || 'A consulta de versão não está disponível.', expectedVersion, 'Não verificável');
   const versions = apps.map(app => app.version).filter((version): version is string => Boolean(version));
   if (versions.length === 0) return make(id, title, category, 'ignored', error || 'O Windows não informou uma versão do produto.', expectedVersion, 'Versão não informada');
-  const found = versions.find(version => version.trim() === expectedVersion);
-  return make(id, title, category, found ? 'success' : 'warning', found ? 'Versão esperada encontrada.' : 'A versão instalada diverge da versão esperada.', expectedVersion, [...new Set(versions)].join(', '));
+  const distinctVersions = [...new Set(versions.map(version => version.trim()))];
+  if (distinctVersions.length > 1) return make(id, title, category, 'warning', 'Foram encontradas versões distintas em instalações ou registros diferentes.', expectedVersion, distinctVersions.join(', '));
+  const found = distinctVersions[0] === expectedVersion;
+  return make(id, title, category, found ? 'success' : 'warning', found ? 'Versão esperada encontrada.' : 'A versão instalada diverge da versão esperada.', expectedVersion, distinctVersions.join(', '));
 }
 
 const rules: ValidationRule[] = [
@@ -77,22 +83,22 @@ const rules: ValidationRule[] = [
     validate: ({ installation }) => softwareVersion('server-cobian-version', 'Cobian Backup', 'backup', installation?.cobian, installation?.cobianError, '9.5.1.212')
   },
   {
-    id: 'server-cobian-location', name: 'Local esperado do Cobian Backup', category: 'backup', profiles: ['server'],
+    id: 'server-cobian-location', name: 'Local do Cobian Backup', category: 'backup', profiles: ['server'],
     validate: ({ installation }) => {
       const apps = installation?.cobian;
       const error = installation?.cobianError;
-      if (!apps) return make('server-cobian-location', 'Local esperado do Cobian Backup', 'backup', 'ignored', error || 'Local não verificável.', 'Local de instalação definido no procedimento', 'Não verificável');
+      if (!apps) return make('server-cobian-location', 'Local do Cobian Backup', 'backup', 'ignored', error || 'Local não verificável.', 'Local não definido pelo procedimento', 'Não verificável');
       const locations = apps.map(a => a.location).filter((v): v is string => Boolean(v));
-      return make('server-cobian-location', 'Local esperado do Cobian Backup', 'backup', 'ignored', locations.length ? 'O local foi localizado, mas o procedimento não define um diretório esperado para comparação.' : 'O Registro não informou o local da instalação.', 'Diretório esperado não informado', locations.join('; ') || 'Não informado');
+      return make('server-cobian-location', 'Local do Cobian Backup', 'backup', 'ignored', locations.length ? 'Localização real identificada; o procedimento não define um diretório para comparação.' : 'O Registro não informou o local da instalação.', 'Local não definido pelo procedimento', locations.join('; ') || 'Não informado');
     }
   },
   {
     id: 'server-ibconsole', name: 'IBConsole', category: 'ibconsole', profiles: ['server'],
     validate: ({ installation }) => {
-      if (!installation || installation.ibconsoleError) return make('server-ibconsole', 'IBConsole', 'ibconsole', 'ignored', installation?.ibconsoleError || 'Consulta não disponível.', String.raw`C:\SoS Soluções\Troia\IBConsole.exe`, 'Não verificável');
-      const expected = 'IBConsole.exe';
+      if (!installation || installation.ibconsoleError) return make('server-ibconsole', 'IBConsole', 'ibconsole', 'ignored', installation?.ibconsoleError || 'Consulta não disponível.', String.raw`C:\SoS Soluções\Troia\IBOConsole.exe`, 'Não verificável');
+      const expected = 'IBOConsole.exe';
       const found = installation.ibconsoleExecutables.find(file => file.toLowerCase() === expected.toLowerCase());
-      return make('server-ibconsole', 'IBConsole', 'ibconsole', found ? 'success' : 'error', found ? 'Executável esperado encontrado na pasta do Troia.' : 'Executável esperado não encontrado na pasta do Troia.', String.raw`C:\SoS Soluções\Troia\IBConsole.exe`, found || 'Ausente');
+      return make('server-ibconsole', 'IBConsole', 'ibconsole', found ? 'success' : 'error', found ? 'Executável esperado encontrado na pasta do Troia.' : 'Executável esperado não encontrado na pasta do Troia.', String.raw`C:\SoS Soluções\Troia\IBOConsole.exe`, found || 'Ausente');
     }
   },
   {

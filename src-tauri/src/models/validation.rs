@@ -12,7 +12,20 @@ pub struct InspectionValue {
 pub struct InstalledSoftware {
     pub name: String,
     pub version: Option<String>,
+    pub version_source: Option<String>,
     pub location: Option<String>,
+    pub registry_sources: Vec<SoftwareRegistrySource>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoftwareRegistrySource {
+    pub hive: String,
+    pub view: String,
+    pub key: String,
+    pub display_name: String,
+    pub display_version: Option<String>,
+    pub install_location: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

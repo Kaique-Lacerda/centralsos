@@ -4,16 +4,20 @@ import { Shell } from '../components/Shell';
 import { Dashboard, DiagnosticPage, DownloadPage, FavoritesPage, InstallationsPage, SettingsPage, SupportPage, ToolsPage, ValidationPage } from '../pages/Pages';
 import { toolRegistry } from '../tools/registry';
 import { runtimeEnvironment } from '../services/runtime/environment';
+import { PrinterDiagnosticPage } from '../pages/PrinterDiagnosticPage';
+import { NetworkDiagnosticPage } from '../pages/NetworkDiagnosticPage';
 
 const toolPages: Record<string, ComponentType> = {
-  'computer-diagnostic': DiagnosticPage
+  'computer-diagnostic': DiagnosticPage,
+  'printer-diagnostic': PrinterDiagnosticPage,
+  'network-diagnostic': NetworkDiagnosticPage
 };
 
 function ToolRoute({ toolId }: { toolId: string }) {
   const tool = toolRegistry.find(candidate => candidate.id === toolId);
   if (!tool || !tool.enabled) return <main className="page">Esta ferramenta não está habilitada.</main>;
   if (!tool.availableOn.includes(runtimeEnvironment)) {
-    return <main className="page"><h1>{tool.name}</h1><p>Esta ferramenta exige o aplicativo Desktop.</p></main>;
+    return <main className="page"><h1>{tool.name}</h1><p>Esta ferramenta depende do Desktop Windows. Abra o aplicativo CENTRAL SOS para acessar os dados locais.</p></main>;
   }
   const Page = toolPages[tool.id];
   return Page ? <Page /> : <main className="page">A página desta ferramenta ainda não está disponível.</main>;

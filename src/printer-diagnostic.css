@@ -1,0 +1,37 @@
+.printer-page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:22px}
+.printer-page-heading>div>small{font-size:10px;font-weight:700;letter-spacing:.12em;color:#747d8b}
+.printer-page-heading h1{font:700 26px Manrope;margin:6px 0}
+.printer-page-heading p{font-size:11px;color:#858d9b;margin:4px 0}
+.printer-refresh{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.printer-captured,.printer-footnote{font-size:10px;color:#858d9b;margin:11px 2px}
+.printer-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
+.printer-summary>div{min-width:0;padding:13px;background:#171a21;border:1px solid #2a2e38;border-radius:8px;display:flex;flex-direction:column;gap:4px}
+.printer-summary small,.printer-summary span{font-size:10px;color:#858d9b}
+.printer-summary b{font:600 16px Manrope;overflow-wrap:anywhere}
+.printer-summary>div:last-child b{font:600 12px Manrope}
+.printer-list{display:grid;gap:10px;margin-top:12px}
+.printer-card{padding:16px;background:#171a21;border:1px solid #2a2e38;border-radius:8px}
+.printer-card-heading{display:flex;align-items:flex-start;gap:11px}
+.printer-card-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:7px;background:#242130;color:#b6a2ef}
+.printer-card-title{min-width:0;flex:1}
+.printer-card-title h2{font:600 14px Manrope;margin:1px 0 7px;overflow-wrap:anywhere}
+.printer-badges{display:flex;flex-wrap:wrap;gap:6px}
+.printer-badge{padding:3px 7px;border-radius:99px;background:#242831;color:#aab1bf;font-size:9px}
+.printer-badge.default,.printer-badge.connected{background:#1d3027;color:#91d1a8}
+.printer-badge.offline{background:#392326;color:#f0a2a2}
+.printer-badge.unknown{background:#332e23;color:#d8bb7a}
+.printer-badge.type{background:#28243a;color:#c1afff}
+.printer-details{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0 0}
+.printer-detail{min-width:0;padding:9px;background:#12151b;border-radius:5px}
+.printer-detail dt{font-size:9px;color:#858d9b;margin-bottom:4px}
+.printer-detail dd{font-size:10px;margin:0;overflow-wrap:anywhere}
+.printer-detail.available dd{color:#d5dbe4}
+.printer-detail.attention dd{color:#d8bb7a}
+.printer-detail.problem dd{color:#f0a2a2}
+.printer-diagnostics{display:flex;flex-wrap:wrap;gap:4px 15px;border-top:1px solid #2a2e38;margin-top:12px;padding-top:9px}
+.printer-diagnostics p{margin:0;font-size:9px;color:#aeb5c0}
+.printer-diagnostics .available{color:#91cda4}
+.printer-diagnostics .attention{color:#d8bb7a}
+.printer-diagnostics .problem{color:#f0a2a2}
+.printer-empty{margin-top:14px}
+@media(max-width:1100px){.printer-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.printer-details{grid-template-columns:repeat(3,minmax(0,1fr))}}
