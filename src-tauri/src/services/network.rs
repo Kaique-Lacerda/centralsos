@@ -14,6 +14,13 @@ struct AdapterRow {
     mac_address: Option<String>,
     net_connection_status: Option<u16>,
     net_enabled: Option<bool>,
+    physical_adapter: Option<bool>,
+    manufacturer: Option<String>,
+    product_name: Option<String>,
+    service_name: Option<String>,
+    #[serde(rename = "PNPDeviceID")]
+    pnp_device_id: Option<String>,
+    adapter_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -33,7 +40,7 @@ struct ConfigurationRow {
 
 pub fn collect(connection: &WMIConnection) -> (Vec<NetworkAdapterSnapshot>, Option<String>) {
     let adapters = match connection.raw_query::<AdapterRow>(
-        "SELECT Name, Index, MACAddress, NetConnectionStatus, NetEnabled FROM Win32_NetworkAdapter",
+        "SELECT Name, Index, MACAddress, NetConnectionStatus, NetEnabled, PhysicalAdapter, Manufacturer, ProductName, ServiceName, PNPDeviceID, AdapterType FROM Win32_NetworkAdapter",
     ) {
         Ok(rows) => rows,
         Err(error) => return (Vec::new(), Some(error.to_string())),
@@ -48,6 +55,12 @@ pub fn collect(connection: &WMIConnection) -> (Vec<NetworkAdapterSnapshot>, Opti
                 name: adapter.name.unwrap_or_else(|| "Indisponível".into()),
                 status: connection_status(adapter.net_connection_status, adapter.net_enabled),
                 mac: adapter.mac_address,
+                physical_adapter: adapter.physical_adapter,
+                manufacturer: adapter.manufacturer,
+                product_name: adapter.product_name,
+                service_name: adapter.service_name,
+                pnp_device_id: adapter.pnp_device_id,
+                adapter_type: adapter.adapter_type,
                 ..NetworkAdapterSnapshot::default()
             }).collect();
             return (items, Some(error.to_string()));
@@ -88,6 +101,12 @@ pub fn collect(connection: &WMIConnection) -> (Vec<NetworkAdapterSnapshot>, Opti
                 mac: configuration
                     .and_then(|item| item.mac_address.clone())
                     .or(adapter.mac_address),
+                physical_adapter: adapter.physical_adapter,
+                manufacturer: adapter.manufacturer,
+                product_name: adapter.product_name,
+                service_name: adapter.service_name,
+                pnp_device_id: adapter.pnp_device_id,
+                adapter_type: adapter.adapter_type,
                 ipv4,
                 ipv6,
                 gateways: configuration

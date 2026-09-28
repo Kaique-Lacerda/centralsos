@@ -9,7 +9,7 @@
     "typecheck": "tsc -b --pretty",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "test:validation": "node --test src/services/validation/tests/*.test.mjs"
+    "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

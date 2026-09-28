@@ -1,10 +1,12 @@
 use crate::models::validation::{
     FirebirdService, InspectionValue, InstallationSnapshot, InstalledSoftware,
+    SoftwareRegistrySource,
 };
 use std::{collections::BTreeMap, fs, path::Path, process::Command};
+use std::os::windows::process::CommandExt;
 
-const UNINSTALL_64: &str = r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
-const UNINSTALL_32: &str = r"HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+const UNINSTALL_ROOT: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
 const DATABASE: &str = r"C:\SoS Soluções\Troia\Banco\autocom.fdb";
 const TROIA_DIR: &str = r"C:\SoS Soluções\Troia";
 // Configurar somente quando o procedimento informar o nome exato da DLL.
@@ -41,12 +43,7 @@ pub fn collect() -> InstallationSnapshot {
         .unwrap_or_default();
     let nube_contabil = programs
         .as_ref()
-        .map(|p| {
-            find_software(p, |name| {
-                let n = name.to_ascii_lowercase();
-                n.contains("nuvem") && (n.contains("contábil") || n.contains("contabil"))
-            })
-        })
+        .map(|p| find_software(p, is_target_software))
         .unwrap_or_default();
     InstallationSnapshot {
         uac_enable_lua,
@@ -87,12 +84,12 @@ fn path_exists(path: &str) -> InspectionValue {
 }
 
 fn registry_value(key: &str, name: &str) -> InspectionValue {
-    match Command::new("reg.exe")
+    match reg_command()
         .args(["query", key, "/v", name])
         .output()
     {
         Ok(output) if output.status.success() => {
-            let value = String::from_utf8_lossy(&output.stdout)
+            let value = decode_registry_output(&output.stdout)
                 .lines()
                 .find_map(|line| {
                     let mut columns = line.split_whitespace();
@@ -106,13 +103,49 @@ fn registry_value(key: &str, name: &str) -> InspectionValue {
         }
         Ok(output) => InspectionValue {
             value: None,
-            error: Some(String::from_utf8_lossy(&output.stderr).trim().to_owned()),
+            error: Some(decode_registry_output(&output.stderr).trim().to_owned()),
         },
         Err(error) => InspectionValue {
             value: None,
             error: Some(format!("Falha ao consultar o Registro: {error}")),
         },
     }
+}
+
+#[link(name = "kernel32")]
+extern "system" {
+    fn GetACP() -> u32;
+    fn GetOEMCP() -> u32;
+    fn MultiByteToWideChar(
+        code_page: u32,
+        flags: u32,
+        source: *const u8,
+        source_length: i32,
+        destination: *mut u16,
+        destination_length: i32,
+    ) -> i32;
+}
+
+fn decode_registry_output(bytes: &[u8]) -> String {
+    if let Some(utf16) = bytes.strip_prefix(&[0xff, 0xfe]) {
+        let words = utf16.chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]])).collect::<Vec<_>>();
+        return String::from_utf16_lossy(&words);
+    }
+    if let Ok(utf8) = std::str::from_utf8(bytes) {
+        return utf8.to_owned();
+    }
+    for code_page in [unsafe { GetOEMCP() }, unsafe { GetACP() }] {
+        let needed = unsafe {
+            MultiByteToWideChar(code_page, 0, bytes.as_ptr(), bytes.len() as i32, std::ptr::null_mut(), 0)
+        };
+        if needed <= 0 { continue; }
+        let mut wide = vec![0u16; needed as usize];
+        let written = unsafe {
+            MultiByteToWideChar(code_page, 0, bytes.as_ptr(), bytes.len() as i32, wide.as_mut_ptr(), needed)
+        };
+        if written > 0 { return String::from_utf16_lossy(&wide[..written as usize]); }
+    }
+    String::from_utf8_lossy(bytes).into_owned()
 }
 
 fn registry_bool(key: &str, name: &str) -> InspectionValue {
@@ -282,57 +315,89 @@ fn executable_file_version(path: &str) -> Option<String> {
 fn collect_installed_software() -> (Result<Vec<InstalledSoftware>, String>, Option<String>) {
     let mut found = vec![];
     let mut issues = vec![];
-    for key in [UNINSTALL_64, UNINSTALL_32] {
-        match Command::new("reg.exe").args(["query", key, "/s"]).output() {
+    let mut successful_queries = 0;
+    for hive in ["HKLM", "HKCU"] {
+        for view in ["64", "32"] {
+            let key = format!(r"{hive}\{UNINSTALL_ROOT}");
+            match reg_command()
+                .arg("query")
+                .arg(&key)
+                .arg("/s")
+                .arg(format!("/reg:{view}"))
+                .output()
+            {
             Ok(output) if output.status.success() => {
-                parse_uninstall_entries(&String::from_utf8_lossy(&output.stdout), &mut found)
+                    successful_queries += 1;
+                    parse_uninstall_entries(
+                        &decode_registry_output(&output.stdout),
+                        hive,
+                        view,
+                        &mut found,
+                    )
             }
             Ok(output) => issues.push(format!(
-                "{key}: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
+                    "{key} (view {view}): {}",
+                decode_registry_output(&output.stderr).trim()
             )),
             Err(error) => issues.push(format!(
-                "Não foi possível consultar os programas instalados: {error}"
+                    "Não foi possível consultar {key} (view {view}): {error}"
             )),
+            }
         }
     }
-    if found.is_empty() && issues.len() == 2 {
+    if successful_queries == 0 {
         (Err(issues.join("; ")), Some(issues.join("; ")))
     } else {
         (Ok(found), (!issues.is_empty()).then(|| issues.join("; ")))
     }
 }
 
-fn parse_uninstall_entries(output: &str, entries: &mut Vec<InstalledSoftware>) {
+fn reg_command() -> Command {
+    let mut command = Command::new("reg.exe");
+    command.creation_flags(reg_creation_flags());
+    command
+}
+
+fn reg_creation_flags() -> u32 {
+    CREATE_NO_WINDOW
+}
+
+fn parse_uninstall_entries(output: &str, hive: &str, view: &str, entries: &mut Vec<InstalledSoftware>) {
     let mut current_key = String::new();
     let mut values = BTreeMap::<String, String>::new();
-    let finish =
-        |_key: &str, values: &BTreeMap<String, String>, entries: &mut Vec<InstalledSoftware>| {
-            let Some(name) = values.get("displayname").filter(|name| {
-                let n = name.to_ascii_lowercase();
-                n.contains("cobian")
-                    || n.contains("nuvem") && (n.contains("contábil") || n.contains("contabil"))
-            }) else {
+    let finish = |key: &str, values: &BTreeMap<String, String>, entries: &mut Vec<InstalledSoftware>| {
+            let Some(name) = values.get("displayname").filter(|name| is_target_software(name)) else {
                 return;
             };
-            let location = values
-                .get("installlocation")
-                .filter(|v| !v.trim().is_empty())
-                .cloned()
-                .or_else(|| {
-                    values
-                        .get("displayicon")
-                        .and_then(|v| v.split(',').next())
-                        .map(|v| v.trim().trim_matches('"').to_owned())
-                });
-            if !entries
-                .iter()
-                .any(|item| item.name.eq_ignore_ascii_case(name))
-            {
+            let location = software_location(values);
+            let (version, version_source) = software_version(name, values, location.as_deref());
+            let source = SoftwareRegistrySource {
+                hive: hive.to_owned(),
+                view: format!("{view}-bit"),
+                key: key.to_owned(),
+                display_name: name.clone(),
+                display_version: values.get("displayversion").cloned(),
+                install_location: values.get("installlocation").cloned(),
+            };
+            let family = software_family(name);
+            let duplicate = entries.iter_mut().find(|item| {
+                software_family(&item.name) == family
+                    && (item.version == version || item.version.is_none() || version.is_none())
+                    && (item.location == location || item.location.is_none() || location.is_none())
+            });
+            if let Some(existing) = duplicate {
+                if existing.location.is_none() { existing.location = location; }
+                if existing.version_source.is_none() { existing.version_source = version_source; }
+                if !existing.registry_sources.iter().any(|item| item.hive == source.hive && item.view == source.view && item.key.eq_ignore_ascii_case(&source.key)) {
+                    existing.registry_sources.push(source);
+                }
+            } else {
                 entries.push(InstalledSoftware {
                     name: name.clone(),
-                    version: values.get("displayversion").cloned(),
+                    version,
+                    version_source,
                     location,
+                    registry_sources: vec![source],
                 });
             }
         };
@@ -354,6 +419,67 @@ fn parse_uninstall_entries(output: &str, entries: &mut Vec<InstalledSoftware>) {
         }
     }
     finish(&current_key, &values, entries);
+}
+
+fn software_family(name: &str) -> &'static str {
+    let normalized = name.to_ascii_lowercase();
+    if normalized.contains("cobian") { "cobian" } else { "nuvem-contabil" }
+}
+
+fn is_target_software(name: &str) -> bool {
+    let normalized = name.to_lowercase();
+    normalized.contains("cobian")
+        || normalized.contains("nuvem") && normalized.contains("cont") && normalized.contains("bil")
+}
+
+fn software_location(values: &BTreeMap<String, String>) -> Option<String> {
+    if let Some(location) = values.get("installlocation").filter(|value| !value.trim().is_empty()) {
+        return Some(location.trim().to_owned());
+    }
+    ["uninstallstring", "quietuninstallstring", "displayicon"]
+        .iter()
+        .filter_map(|name| values.get(*name))
+        .find_map(|command| {
+            let executable = command_executable_path(command)?;
+            let path = Path::new(&executable);
+            let parent = path.parent()?;
+            parent.is_dir().then(|| parent.to_string_lossy().into_owned())
+        })
+}
+
+fn command_executable_path(command: &str) -> Option<String> {
+    let value = command.trim();
+    if let Some(quoted) = value.strip_prefix('"') {
+        let executable = quoted.split('"').next()?.trim();
+        return executable.to_ascii_lowercase().ends_with(".exe").then(|| executable.to_owned());
+    }
+    let lower = value.to_ascii_lowercase();
+    let end = lower.find(".exe")? + 4;
+    Some(value[..end].trim().trim_matches('"').to_owned())
+}
+
+fn display_name_version(name: &str) -> Option<String> {
+    name.split(|character: char| !(character.is_ascii_digit() || character == '.'))
+        .find(|token| {
+            let parts = token.split('.').collect::<Vec<_>>();
+            parts.len() >= 3 && parts.iter().all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+        })
+        .map(str::to_owned)
+}
+
+fn software_version(name: &str, values: &BTreeMap<String, String>, location: Option<&str>) -> (Option<String>, Option<String>) {
+    if let Some(version) = values.get("displayversion").filter(|value| !value.trim().is_empty()) {
+        return (Some(version.trim().to_owned()), Some("DisplayVersion do Registro".into()));
+    }
+    if let Some(version) = display_name_version(name) {
+        return (Some(version), Some("versão informada no DisplayName do Registro".into()));
+    }
+    if name.to_ascii_lowercase().contains("cobian") {
+        if let Some(version) = location.and_then(|directory| executable_file_version(&Path::new(directory).join("cbInterface.exe").to_string_lossy())) {
+            return (Some(version), Some("FileVersion de cbInterface.exe".into()));
+        }
+    }
+    (None, None)
 }
 
 fn find_software(
@@ -441,5 +567,78 @@ fn pe_architecture(path: &str) -> Option<String> {
         0x8664 => Some("x64".into()),
         0xaa64 => Some("ARM64".into()),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn registration(display_name: &str, display_version: &str, install_location: &str) -> String {
+        format!(
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{display_name}\n    DisplayName    REG_SZ    {display_name}\n    DisplayVersion    REG_SZ    {display_version}\n    InstallLocation    REG_SZ    {install_location}\n"
+        )
+    }
+
+    #[test]
+    fn registry_process_uses_create_no_window_flag() {
+        assert_eq!(reg_creation_flags() & CREATE_NO_WINDOW, CREATE_NO_WINDOW);
+    }
+
+    #[test]
+    fn collects_all_hives_and_views_and_merges_duplicate_registration_sources() {
+        let mut entries = Vec::new();
+        for (hive, view) in [("HKLM", "64"), ("HKLM", "32"), ("HKCU", "64"), ("HKCU", "32")] {
+            parse_uninstall_entries(
+                &registration("Nuvem Contábil v 1.0.29", "", "C:\\SoS Soluções\\Nuvem Contábil"),
+                hive,
+                view,
+                &mut entries,
+            );
+        }
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].version.as_deref(), Some("1.0.29"));
+        assert_eq!(entries[0].version_source.as_deref(), Some("versão informada no DisplayName do Registro"));
+        assert_eq!(entries[0].registry_sources.len(), 4);
+        assert_eq!(entries[0].registry_sources[0].display_version, None);
+        assert_eq!(entries[0].registry_sources[0].install_location.as_deref(), Some("C:\\SoS Soluções\\Nuvem Contábil"));
+        assert!(entries[0].registry_sources.iter().any(|source| source.hive == "HKCU" && source.view == "32-bit"));
+        assert!(entries[0].registry_sources.iter().any(|source| source.hive == "HKLM" && source.view == "64-bit"));
+    }
+
+    #[test]
+    fn preserves_distinct_versions_instead_of_collapsing_them() {
+        let mut entries = Vec::new();
+        parse_uninstall_entries(
+            &registration("Nuvem Contábil v 1.0.29", "", "C:\\SoS Soluções\\Nuvem Contábil"),
+            "HKLM", "32", &mut entries,
+        );
+        parse_uninstall_entries(
+            &registration("Nuvem Contábil v 1.0.30", "", "C:\\SoS Soluções\\Nuvem Contábil"),
+            "HKCU", "64", &mut entries,
+        );
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().any(|entry| entry.version.as_deref() == Some("1.0.29")));
+        assert!(entries.iter().any(|entry| entry.version.as_deref() == Some("1.0.30")));
+    }
+
+    #[test]
+    fn uses_registered_version_before_name_or_executable_fallback() {
+        let mut values = BTreeMap::new();
+        values.insert("displayversion".into(), "1.2.3".into());
+        assert_eq!(software_version("Cobian Backup 9", &values, None).0.as_deref(), Some("1.2.3"));
+        assert_eq!(software_version("Cobian Backup 9", &values, None).1.as_deref(), Some("DisplayVersion do Registro"));
+        assert_eq!(display_name_version("Nuvem Contábil v 1.0.29").as_deref(), Some("1.0.29"));
+        assert!(is_target_software("Nuvem Cont�bil v 1.0.29"));
+        assert!(is_target_software("Cobian Backup 9"));
+        assert!(!is_target_software("Nuvem Fiscal"));
+    }
+
+    #[test]
+    fn locates_unquoted_uninstaller_paths_containing_spaces() {
+        assert_eq!(
+            command_executable_path(r"C:\Program Files (x86)\Cobian Backup 9\cbUninstall.exe"),
+            Some(r"C:\Program Files (x86)\Cobian Backup 9\cbUninstall.exe".into())
+        );
     }
 }

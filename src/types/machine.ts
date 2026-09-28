@@ -30,6 +30,12 @@ export interface NetworkAdapterSnapshot {
   name: string;
   status: string | null;
   mac: string | null;
+  physicalAdapter: boolean | null;
+  manufacturer: string | null;
+  productName: string | null;
+  serviceName: string | null;
+  pnpDeviceId: string | null;
+  adapterType: string | null;
   ipv4: string[];
   ipv6: string[];
   gateways: string[];
@@ -43,6 +49,9 @@ export interface PrinterSnapshot {
   port: string | null;
   server: string | null;
   status: string | null;
+  local: boolean | null;
+  network: boolean | null;
+  shared: boolean | null;
 }
 
 export interface SnapshotCollection<T> {

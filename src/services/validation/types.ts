@@ -27,7 +27,8 @@ export interface ValidationRule {
 }
 
 export interface InspectionValue { value: string | null; error: string | null }
-export interface InstalledSoftware { name: string; version: string | null; location: string | null }
+export interface SoftwareRegistrySource { hive: string; view: string; key: string; displayName: string; displayVersion: string | null; installLocation: string | null }
+export interface InstalledSoftware { name: string; version: string | null; versionSource: string | null; location: string | null; registrySources: SoftwareRegistrySource[] }
 export interface FirebirdService { serviceName: string; displayName: string; state: string | null; path: string | null; version: string | null; architecture: string | null }
 export interface InstallationSnapshot {
   uacEnableLua: InspectionValue;

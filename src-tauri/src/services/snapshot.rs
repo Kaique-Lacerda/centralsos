@@ -28,7 +28,8 @@ pub fn collect_machine_snapshot() -> MachineSnapshot {
                     items: network,
                     error: network_error,
                 };
-                snapshot.printers = collect_section(super::printers::collect(&connection));
+                let (printers, printer_error) = super::printers::collect(&connection);
+                snapshot.printers = SnapshotCollection { items: printers, error: printer_error };
             }
             Err(error) => {
                 let reason = format!("Não foi possível conectar ao provedor WMI: {error}");
