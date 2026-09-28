@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, Box, Check, CircleAlert, Download, Monitor, Printer, Server, Settings2, ShieldCheck, Wifi } from 'lucide-react';
 import { LocalConfigService } from '../services/runtime/localConfig';
@@ -7,11 +7,12 @@ import { MachineSnapshotService } from '../services/snapshot/MachineSnapshotServ
 import { groupValidationResults } from '../services/validation/ValidationRegistry';
 import { runMachineValidation } from '../services/validation/runMachineValidation';
 import { toolRegistry } from '../tools/registry';
-import { WINDOWS_RELEASE_URL } from '../config/releases';
+import { getLatestWindowsRelease, type WindowsReleaseLookup } from '../services/releases/GitHubReleaseService';
 import type { MachineEnvironment, MachineRole } from '../types';
 import type { MachineSnapshot } from '../types/machine';
 import type { MachineValidationRun, ValidationCategory, ValidationStatus } from '../services/validation/types';
 import '../snapshot.css';
+import '../release-download.css';
 function Heading({tag,title,description}:{tag:string;title:string;description:string}){return <div className="heading"><small>{tag}</small><h1>{title}</h1><p>{description}</p></div>}
 function formatBytes(bytes:number|null){if(bytes===null)return 'Não disponível';if(bytes===0)return '0 B';const units=['B','KB','MB','GB','TB'];const index=Math.min(Math.floor(Math.log(bytes)/Math.log(1024)),units.length-1);return `${(bytes/1024**index).toFixed(index===0?0:1)} ${units[index]}`}
 const categoryLabels:Record<ValidationCategory,string>={system:'Sistema',network:'Rede',sharing:'Compartilhamento',files:'Arquivos / DLL',printers:'Impressão',storage:'Armazenamento',database:'Banco',firebird:'Firebird',backup:'Backup',ibconsole:'IBConsole',cloud_accounting:'Nuvem Contábil'};
@@ -42,4 +43,18 @@ export function InstallationsPage(){return <><Heading tag="OPERAÇÕES" title="I
 export function FavoritesPage(){return <><Heading tag="ATALHOS" title="Favoritos" description="Acesse rapidamente suas ferramentas favoritas."/><div className="empty"><b>Nenhum favorito ainda</b><Link to="/tools">Explorar ferramentas</Link></div></>}
 export function SupportPage(){return <><Heading tag="ATENDIMENTO" title="Suporte" description="Área reservada para acesso assistido futuro."/><p className="notice"><ShieldCheck/> Demonstração visual. Nenhuma autenticação real está disponível.</p><div className="panel form"><h2>Acesso de suporte</h2><label>Técnico<select disabled><option>Disponível futuramente</option></select></label><label>Código de confirmação<input disabled placeholder="Código do técnico"/></label><label><input type="checkbox" disabled/> Confiar neste dispositivo por 1 dia</label><button className="primary" disabled>Continuar</button><small>Mock local declarado; sem login real.</small></div></>}
 export function SettingsPage(){const [env,setEnv]=useState(LocalConfigService.load());return <><Heading tag="PREFERÊNCIAS" title="Configurações" description="Perfil local, editável posteriormente."/><EnvironmentForm initial={env} onSave={setEnv}/></>}
-export function DownloadPage(){return <><Heading tag="APLICATIVO WINDOWS" title="Download" description="Versão Desktop da CENTRAL SOS."/><div className="panel row"><Download/><div><b>CENTRAL SOS para Windows</b><p>{WINDOWS_RELEASE_URL?'Baixe a versão Desktop para Windows.':'Release ainda não publicada. Nenhuma URL de download foi configurada.'}</p></div>{WINDOWS_RELEASE_URL?<a className="primary" href={WINDOWS_RELEASE_URL}>Baixar para Windows</a>:<button disabled>Indisponível</button>}</div></>}
+export function DownloadPage(){
+  const [release,setRelease]=useState<WindowsReleaseLookup|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState(false);
+  const load=async(refresh=false)=>{
+    setLoading(true);setError(false);
+    try{setRelease(await getLatestWindowsRelease({refresh}))}catch{setRelease(null);setError(true)}finally{setLoading(false)}
+  };
+  useEffect(()=>{void load()},[]);
+  const availableRelease=release?.status==='available'?release:null;
+  const asset=availableRelease?.asset??null;
+  const formatSize=(bytes:number|null)=>bytes===null?'':bytes<1024*1024?`${(bytes/1024).toLocaleString('pt-BR',{maximumFractionDigits:0})} KB`:`${(bytes/1024/1024).toLocaleString('pt-BR',{maximumFractionDigits:1})} MB`;
+  const publishedAt=release?.status==='available'&&release.publishedAt?new Date(release.publishedAt).toLocaleDateString('pt-BR'):null;
+  return <><Heading tag="APLICATIVO WINDOWS" title="Download" description="Versão Desktop da CENTRAL SOS."/><section className="panel release-card"><div className="release-icon"><Download/></div><div className="release-content"><b>CENTRAL SOS para Windows</b>{loading?<p>Consultando última versão…</p>:error?<><p>Não foi possível consultar a versão disponível.</p><button className="linkbtn" onClick={()=>void load(true)}>Tentar novamente</button></>:availableRelease?<><p>{availableRelease.version?`Versão ${availableRelease.version}`:'Versão não informada'}{publishedAt?` · Publicado em ${publishedAt}`:''}</p><small>{availableRelease.asset.name}{availableRelease.asset.sizeBytes!==null?` · ${formatSize(availableRelease.asset.sizeBytes)}`:''}</small></>:release?.status==='ambiguous'?<p>Há mais de um instalador possível nesta release. Não foi possível determinar o arquivo correto.</p>:release?.status==='no-installer'?<p>Instalador ainda não publicado.</p>:<><p>Nenhuma versão publicada</p><p>O instalador do CENTRAL SOS estará disponível aqui quando uma Release for publicada.</p></>}</div><div className="release-actions">{asset?<a className="primary" href={asset.downloadUrl} target="_blank" rel="noopener noreferrer" download>Baixar para Windows</a>:<button className="primary" disabled>Indisponível</button>}{!loading&&!error&&<button className="linkbtn" onClick={()=>void load(true)}>Atualizar</button>}</div></section>{error&&<p className="error"><CircleAlert/> A consulta ao GitHub falhou. Verifique a conexão e tente novamente.</p>}</>;
+}

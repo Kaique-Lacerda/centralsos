@@ -1,0 +1,8 @@
+.release-card{display:flex;align-items:center;gap:15px;padding:20px}
+.release-icon{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:8px;background:#252137;color:#b8a5ff}
+.release-content{min-width:0;flex:1}
+.release-content>b{font:600 13px Manrope,sans-serif}
+.release-content p{margin:5px 0;color:#aab1bf;font-size:11px}
+.release-content small{color:#858d9b;font-size:10px;overflow-wrap:anywhere}
+.release-actions{display:grid;justify-items:end;gap:6px}
+@media(max-width:760px){.release-card{align-items:flex-start;flex-wrap:wrap}.release-content{flex:1 1 calc(100% - 60px)}.release-actions{width:100%;display:flex;align-items:center;justify-content:flex-end}}
