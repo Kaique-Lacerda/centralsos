@@ -59,6 +59,17 @@ export interface SnapshotCollection<T> {
   error: string | null;
 }
 
+export interface WindowsServiceSnapshot {
+  name: string | null;
+  displayName: string | null;
+  state: string | null;
+  startMode: string | null;
+  status: string | null;
+  pathName: string | null;
+  description: string | null;
+  startName: string | null;
+}
+
 export interface MachineSnapshot {
   /** Milliseconds since Unix epoch when collection began. */
   capturedAt: number;

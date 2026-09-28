@@ -6,11 +6,13 @@ import { toolRegistry } from '../tools/registry';
 import { runtimeEnvironment } from '../services/runtime/environment';
 import { PrinterDiagnosticPage } from '../pages/PrinterDiagnosticPage';
 import { NetworkDiagnosticPage } from '../pages/NetworkDiagnosticPage';
+import { WindowsServicesDiagnosticPage } from '../pages/WindowsServicesDiagnosticPage';
 
 const toolPages: Record<string, ComponentType> = {
   'computer-diagnostic': DiagnosticPage,
   'printer-diagnostic': PrinterDiagnosticPage,
-  'network-diagnostic': NetworkDiagnosticPage
+  'network-diagnostic': NetworkDiagnosticPage,
+  'windows-services-diagnostic': WindowsServicesDiagnosticPage
 };
 
 function ToolRoute({ toolId }: { toolId: string }) {
