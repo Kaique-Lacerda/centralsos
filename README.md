@@ -1,6 +1,6 @@
 # CENTRAL SOS
 
-Aplicação interna para organizar ferramentas de suporte técnico, com uma interface compartilhada entre Web e Desktop Windows. Esta etapa oferece a fundação de navegação, catálogo, configuração local, validação inicial e um diagnóstico explícito do sistema no Desktop.
+Aplicação interna para suporte técnico, pensada como aplicativo desktop Windows (.exe) e não como serviço público acessível pela web. O ambiente browser existe apenas como prévia de desenvolvimento e visualização da interface; a coleta de dados do sistema local só é permitida no runtime desktop.
 
 ## Arquitetura
 
@@ -11,8 +11,8 @@ React + TypeScript renderiza a interface. Os serviços TypeScript intermediam o 
 - React, TypeScript, Vite, React Router
 - Tailwind CSS e Lucide React
 - Tauri 2, Rust, `sysinfo` e WMI tipado (`wmi`, somente Windows)
-- Web: interface, catálogo, validações pendentes e página de download sem URL publicada.
-- Desktop: mesma interface; `get_machine_snapshot` consulta sistema, discos, adaptadores e impressoras sob demanda. A resposta preserva erros parciais por seção.
+- Browser/dev: apenas visualização da interface e navegação sem acesso aos dados locais.
+- Desktop: coleta real de sistema, discos, rede, impressoras e validações locais em Windows. A resposta preserva erros parciais por seção.
 
 ## Executar
 

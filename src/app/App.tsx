@@ -19,7 +19,11 @@ function ToolRoute({ toolId }: { toolId: string }) {
   const tool = toolRegistry.find(candidate => candidate.id === toolId);
   if (!tool || !tool.enabled) return <main className="page">Esta ferramenta não está habilitada.</main>;
   if (!tool.availableOn.includes(runtimeEnvironment)) {
-    return <main className="page"><h1>{tool.name}</h1><p>Esta ferramenta depende do Desktop Windows. Abra o aplicativo CENTRAL SOS para acessar os dados locais.</p></main>;
+    return <main className="page">
+      <h1>{tool.name}</h1>
+      <p>Este projeto foi pensado como aplicativo desktop Windows (.exe), não como serviço web público.</p>
+      <p>A navegação em browser é apenas para visualização e testes de interface. Dados locais só são coletados no ambiente desktop.</p>
+    </main>;
   }
   const Page = toolPages[tool.id];
   return Page ? <Page /> : <main className="page">A página desta ferramenta ainda não está disponível.</main>;
