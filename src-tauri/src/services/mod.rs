@@ -10,3 +10,5 @@ mod printers;
 mod storage;
 #[cfg(windows)]
 mod system;
+#[cfg(windows)]
+pub mod windows_services;
