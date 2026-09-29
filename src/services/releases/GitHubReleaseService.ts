@@ -1,4 +1,6 @@
-const RELEASE_API = 'https://api.github.com/repos/Kaique-Lacerda/centralsos/releases/latest';
+export const GITHUB_REPOSITORY_API = 'https://api.github.com/repos/Kaique-Lacerda/centralsos';
+const RELEASES_API = `${GITHUB_REPOSITORY_API}/releases`;
+const RELEASES_PER_PAGE = 100;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const setupIndicators = ['setup', 'installer', 'nsis'];
 const auxiliaryIndicators = ['uninstall', 'updater', 'update', 'helper', 'bootstrap', 'portable'];
@@ -12,6 +14,7 @@ export interface WindowsInstallerAsset {
 export type WindowsReleaseLookup =
   | { status: 'available'; version: string | null; publishedAt: string | null; asset: WindowsInstallerAsset }
   | { status: 'not-published' }
+  | { status: 'ambiguous-release' }
   | { status: 'no-installer' }
   | { status: 'ambiguous' };
 
@@ -25,9 +28,33 @@ interface ReleaseCandidate {
   tag_name?: unknown;
   published_at?: unknown;
   assets?: unknown;
+  draft?: unknown;
 }
 
+interface ApplicationRelease extends ReleaseCandidate {
+  tag_name: string;
+}
+
+type ApplicationReleaseSelection =
+  | { status: 'selected'; release: ApplicationRelease }
+  | { status: 'not-published' }
+  | { status: 'ambiguous' };
+
 let cached: { value: WindowsReleaseLookup; expiresAt: number } | null = null;
+
+export async function fetchGitHubResponse(
+  url: string,
+  options: { fetcher?: typeof fetch; accept?: string } = {}
+): Promise<Response> {
+  const fetcher = options.fetcher ?? fetch;
+  const response = await fetcher(url, {
+    headers: { Accept: options.accept ?? 'application/vnd.github+json' }
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`GitHub respondeu com HTTP ${response.status}.`);
+  }
+  return response;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -70,19 +97,77 @@ export function selectWindowsInstaller(assets: readonly unknown[]): WindowsInsta
   return 'ambiguous';
 }
 
-export function parseLatestWindowsRelease(payload: unknown): WindowsReleaseLookup {
-  if (!isRecord(payload)) return { status: 'not-published' };
-  const release = payload as ReleaseCandidate;
+function parseApplicationTag(tag: string): [string, string, string] | null {
+  const match = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(tag);
+  return match ? [match[1], match[2], match[3]] : null;
+}
+
+function compareVersionPart(left: string, right: string): number {
+  if (left.length !== right.length) return left.length > right.length ? 1 : -1;
+  return left === right ? 0 : left > right ? 1 : -1;
+}
+
+function compareApplicationVersions(left: [string, string, string], right: [string, string, string]): number {
+  for (let index = 0; index < left.length; index += 1) {
+    const compared = compareVersionPart(left[index], right[index]);
+    if (compared !== 0) return compared;
+  }
+  return 0;
+}
+
+export function selectApplicationRelease(releases: readonly unknown[]): ApplicationReleaseSelection {
+  const candidates = releases
+    .filter(isRecord)
+    .map(release => release as ReleaseCandidate)
+    .filter((release): release is ApplicationRelease =>
+      typeof release.tag_name === 'string'
+      && release.draft !== true
+      && parseApplicationTag(release.tag_name) !== null
+    )
+    .map(release => ({ release, version: parseApplicationTag(release.tag_name)! }));
+
+  if (candidates.length === 0) return { status: 'not-published' };
+  let greatest = candidates[0].version;
+  for (const candidate of candidates.slice(1)) {
+    if (compareApplicationVersions(candidate.version, greatest) > 0) greatest = candidate.version;
+  }
+  const matches = candidates.filter(candidate => compareApplicationVersions(candidate.version, greatest) === 0);
+  if (matches.length !== 1) return { status: 'ambiguous' };
+  return { status: 'selected', release: matches[0].release };
+}
+
+function parseWindowsRelease(release: ApplicationRelease): WindowsReleaseLookup {
   const assets = Array.isArray(release.assets) ? release.assets : [];
   const selected = selectWindowsInstaller(assets);
   if (selected === 'none') return { status: 'no-installer' };
   if (selected === 'ambiguous') return { status: 'ambiguous' };
   return {
     status: 'available',
-    version: typeof release.tag_name === 'string' && release.tag_name.trim() ? release.tag_name.trim() : null,
+    version: release.tag_name,
     publishedAt: typeof release.published_at === 'string' && !Number.isNaN(Date.parse(release.published_at)) ? release.published_at : null,
     asset: selected
   };
+}
+
+export function parseLatestWindowsRelease(payload: unknown): WindowsReleaseLookup {
+  if (!Array.isArray(payload)) return { status: 'not-published' };
+  const selection = selectApplicationRelease(payload);
+  if (selection.status === 'not-published') return { status: 'not-published' };
+  if (selection.status === 'ambiguous') return { status: 'ambiguous-release' };
+  return parseWindowsRelease(selection.release);
+}
+
+async function fetchApplicationReleases(fetcher?: typeof fetch): Promise<unknown[]> {
+  const releases: unknown[] = [];
+  for (let page = 1; ; page += 1) {
+    const url = `${RELEASES_API}?per_page=${RELEASES_PER_PAGE}&page=${page}`;
+    const response = await fetchGitHubResponse(url, { fetcher });
+    if (response.status === 404) return releases;
+    const pageReleases: unknown = await response.json();
+    if (!Array.isArray(pageReleases)) throw new Error('O GitHub retornou uma lista de Releases inválida.');
+    releases.push(...pageReleases);
+    if (pageReleases.length < RELEASES_PER_PAGE) return releases;
+  }
 }
 
 export async function getLatestWindowsRelease(options: {
@@ -93,16 +178,8 @@ export async function getLatestWindowsRelease(options: {
   const now = options.now ?? Date.now;
   if (!options.refresh && cached && cached.expiresAt > now()) return cached.value;
 
-  const fetcher = options.fetcher ?? fetch;
-  const response = await fetcher(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } });
-  if (response.status === 404) {
-    const empty: WindowsReleaseLookup = { status: 'not-published' };
-    cached = { value: empty, expiresAt: now() + CACHE_TTL_MS };
-    return empty;
-  }
-  if (!response.ok) throw new Error(`GitHub respondeu com HTTP ${response.status}.`);
-
-  const result = parseLatestWindowsRelease(await response.json());
+  const releases = await fetchApplicationReleases(options.fetcher);
+  const result = parseLatestWindowsRelease(releases);
   cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
   return result;
 }

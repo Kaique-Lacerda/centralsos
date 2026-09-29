@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "release": "tools-v0.1.0",
+  "tools": [
+    {
+      "id": "firebird-2.5.9",
+      "name": "Firebird",
+      "description": "Instalador Windows do Firebird 2.5.9.27139 para x64.",
+      "version": "2.5.9.27139",
+      "type": "installer",
+      "assetName": "Firebird-2.5.9.27139_0_x64.exe",
+      "sizeBytes": 10014146,
+      "requiresAdmin": true,
+      "architecture": "x64",
+      "sha256": "619715d4e2683504647f778f58669c9f52627921a532da716b8aebf9ede80966"
+    },
+    {
+      "id": "iboconsole",
+      "name": "IBOConsole",
+      "description": "Executável IBOConsole para administração de bancos de dados.",
+      "version": "1.1.9.6",
+      "type": "utility",
+      "assetName": "Iboconsole.exe",
+      "sizeBytes": 4125696,
+      "requiresAdmin": false,
+      "architecture": "x86",
+      "sha256": "64c4b956d7d12c2e19e9d74e0c299910e57d2fd810c4a42aa6d07e48382fcf7e"
+    },
+    {
+      "id": "nuvem-contabil-1.0.29",
+      "name": "Nuvem Contábil",
+      "description": "Instalador Nuvem Contábil para envio de documentos fiscais em nuvem.",
+      "version": "1.0.29",
+      "type": "installer",
+      "assetName": "nuvem_contabil_1_0_29.exe",
+      "sizeBytes": 10768929,
+      "requiresAdmin": false,
+      "sha256": "76952fb47bd590424898f2b48490fd96351c8969e0d716408e8167750cf33cff"
+    }
+  ]
+}

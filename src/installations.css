@@ -1,0 +1,34 @@
+.installations-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px}
+.installations-heading>div>small{font-size:10px;font-weight:700;letter-spacing:.12em;color:#747d8b}
+.installations-heading h1{font:700 26px Manrope;margin:6px 0}
+.installations-heading p{font-size:11px;color:#858d9b;margin:4px 0}
+.installations-refresh{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.installations-release{display:flex;flex-wrap:wrap;gap:14px;padding:10px 12px;background:#171a21;border:1px solid #2a2e38;border-radius:7px;color:#aab1bf;font-size:10px}
+.installations-release span:first-child{color:#c3b3ff;font-weight:600}
+.installations-safety{display:flex;align-items:flex-start;gap:8px;margin:12px 0;padding:11px 12px;border:1px solid #2a3b32;border-radius:7px;background:#17211b;color:#9fc4aa;font-size:10px;line-height:1.5}
+.installations-safety svg{flex:none}
+.installation-tool-list{display:grid;gap:10px;margin-top:12px}
+.installation-tool-card{display:flex;align-items:flex-start;gap:13px;padding:15px;background:#171a21;border:1px solid #2a2e38;border-radius:8px}
+.installation-tool-icon{display:grid;place-items:center;flex:none;width:35px;height:35px;border-radius:7px;background:#242130;color:#b6a2ef}
+.installation-tool-body{flex:1;min-width:0}
+.installation-tool-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.installation-tool-title h2{margin:0;font:600 14px Manrope;overflow-wrap:anywhere}
+.installation-tool-type{padding:3px 7px;border-radius:99px;background:#242831;color:#aab1bf;font-size:9px}
+.installation-tool-body>p{margin:5px 0 9px;color:#aab1bf;font-size:11px}
+.installation-tool-metadata{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.installation-tool-metadata span{display:flex;align-items:center;gap:4px;padding:4px 7px;border-radius:5px;background:#12151b;color:#929baa;font-size:9px}
+.installation-tool-metadata .installation-admin{color:#d8bb7a}
+.installation-download{display:flex;align-items:center;justify-content:center;gap:7px;flex:none;min-width:96px;text-decoration:none}
+.installation-asset-problem{display:flex;align-items:flex-start;gap:6px;color:#e0bf7d!important;font-size:10px!important;line-height:1.45}
+.installation-asset-problem svg{flex:none}
+.installation-integrity{margin-top:9px;color:#858d9b;font-size:9px}
+.installation-integrity summary{cursor:pointer;width:max-content}
+.installation-integrity code{display:block;margin-top:5px;color:#aab1bf;overflow-wrap:anywhere;user-select:all}
+.installation-state{display:flex;align-items:flex-start;gap:10px;margin-top:13px;padding:14px;border:1px solid #393742;background:#201e26;border-radius:7px;color:#c9c2d6;font-size:11px}
+.installation-state>svg{flex:none}
+.installation-state p{margin:5px 0;color:#aab1bf;font-size:10px;line-height:1.5}
+.installation-state.warning{border-color:#51452e;color:#d8bb7a}
+.installations-empty{height:220px;margin-top:12px}
+.installation-spinner{animation:installation-spin 1.1s linear infinite}
+@keyframes installation-spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){.installations-heading{align-items:flex-start;flex-direction:column}.installation-tool-card{flex-wrap:wrap}.installation-tool-body{flex-basis:calc(100% - 50px)}.installation-download{margin-left:auto}}
