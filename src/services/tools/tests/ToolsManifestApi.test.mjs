@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
+import ts from 'typescript';
 
 const bundle = await build({
   entryPoints: [fileURLToPath(new URL('../../../../api/tools-manifest.ts', import.meta.url))],
@@ -54,4 +58,44 @@ test('Vercel route aceita somente GET e exige tag de ferramenta', async () => {
   const tagResponse = responseSink();
   await handler({ method: 'GET', query: { tag: 'main' } }, tagResponse);
   assert.equal(tagResponse.statusCode, 400);
+});
+
+test('a Function compilada em ESM resolve o módulo server pelo specifier .js', async () => {
+  const projectRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+  const apiEntry = join(projectRoot, 'api', 'tools-manifest.ts');
+  const outputRoot = await mkdtemp(join(tmpdir(), 'central-sos-tools-function-'));
+
+  try {
+    const program = ts.createProgram([apiEntry], {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      rootDir: projectRoot,
+      outDir: outputRoot,
+      strict: true,
+      skipLibCheck: true,
+      noEmitOnError: true
+    });
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    assert.deepEqual(diagnostics, [], diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')).join('\n'));
+
+    const emitResult = program.emit();
+    assert.equal(emitResult.emitSkipped, false);
+
+    const compiledApi = join(outputRoot, 'api', 'tools-manifest.js');
+    const compiledProxy = join(outputRoot, 'server', 'ToolsManifestProxy.js');
+    await writeFile(join(outputRoot, 'package.json'), JSON.stringify({ type: 'module' }));
+    const emittedApiSource = await readFile(compiledApi, 'utf8');
+    const emittedProxySource = await readFile(compiledProxy, 'utf8');
+    const relativeImports = [...emittedApiSource.matchAll(/from\s+['"](\.{1,2}\/[^'"]+)['"]/g)].map(match => match[1]);
+    assert.deepEqual(relativeImports, ['../server/ToolsManifestProxy.js']);
+    assert.match(emittedProxySource, /loadToolsManifestFromRelease/);
+
+    const { default: handler } = await import(`${pathToFileURL(compiledApi).href}?esm-smoke=${Date.now()}`);
+    const res = responseSink();
+    await handler({ method: 'GET' }, res);
+    assert.equal(res.statusCode, 400);
+  } finally {
+    await rm(outputRoot, { recursive: true, force: true });
+  }
 });
