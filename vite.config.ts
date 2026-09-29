@@ -1,3 +1,41 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-export default defineConfig({ plugins: [react()], clearScreen: false, server: { strictPort: true, port: 1420 } });
+import { loadToolsManifestFromRelease, ToolsManifestProxyError } from './server/ToolsManifestProxy';
+
+const toolsManifestDevRoute: Plugin = {
+  name: 'tools-manifest-dev-route',
+  configureServer(server) {
+    server.middlewares.use('/api/tools-manifest', async (request, response) => {
+      response.setHeader('Cache-Control', 'no-store');
+      response.setHeader('Content-Type', 'application/json; charset=utf-8');
+      const httpRequest = request as typeof request & { method?: string; url?: string };
+      if (httpRequest.method !== 'GET') {
+        response.statusCode = 405;
+        response.setHeader('Allow', 'GET');
+        response.end(JSON.stringify({ error: 'Método não permitido.' }));
+        return;
+      }
+
+      const query = (httpRequest.url ?? '/').split('?')[1] ?? '';
+      const encodedTag = /(?:^|&)tag=([^&]*)/.exec(query)?.[1];
+      let tag: string | null = null;
+      try {
+        if (encodedTag !== undefined) tag = decodeURIComponent(encodedTag.replace(/\+/g, ' '));
+      } catch {
+        tag = null;
+      }
+      try {
+        if (tag === null) throw new ToolsManifestProxyError(400, 'Informe uma tag de Release de ferramentas válida.');
+        const manifest = await loadToolsManifestFromRelease(tag);
+        response.statusCode = 200;
+        response.end(JSON.stringify(manifest));
+      } catch (error) {
+        response.statusCode = error instanceof ToolsManifestProxyError ? error.statusCode : 502;
+        const message = error instanceof Error ? error.message : 'Falha ao carregar o manifesto.';
+        response.end(JSON.stringify({ error: message }));
+      }
+    });
+  }
+};
+
+export default defineConfig({ plugins: [react(), toolsManifestDevRoute], clearScreen: false, server: { strictPort: true, port: 1420 } });

@@ -12,6 +12,7 @@ const bundle = await build({
 });
 const {
   getGitHubToolsCatalog,
+  getToolsManifestRequest,
   selectToolsRelease,
   validateToolsManifest
 } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
@@ -56,6 +57,10 @@ const response = (body, status = 200) => ({
 function catalogFetcher(releases, manifest, manifestStatus = 200) {
   return async (url, init) => {
     if (String(url).includes('/releases?')) return response(releases);
+    if (String(url).startsWith('/api/tools-manifest?')) {
+      assert.equal(init.headers.Accept, 'application/json');
+      return response(manifest, manifestStatus);
+    }
     if (String(url).includes('/releases/assets/')) {
       assert.equal(init.headers.Accept, 'application/octet-stream');
       return response(manifest, manifestStatus);
@@ -63,6 +68,18 @@ function catalogFetcher(releases, manifest, manifestStatus = 200) {
     throw new Error(`URL inesperada no teste: ${url}`);
   };
 }
+
+test('usa a rota same-origin no browser e preserva o endpoint do asset no Desktop', () => {
+  const releaseManifestUrl = assetUrl('tools-v0.1.0');
+  assert.deepEqual(getToolsManifestRequest('tools-v0.1.0', releaseManifestUrl, 'web'), {
+    url: '/api/tools-manifest?tag=tools-v0.1.0',
+    accept: 'application/json'
+  });
+  assert.deepEqual(getToolsManifestRequest('tools-v0.1.0', releaseManifestUrl, 'desktop'), {
+    url: releaseManifestUrl,
+    accept: 'application/octet-stream'
+  });
+});
 
 test('filtra apenas tags tools-* e seleciona a maior versão sem confundir releases do app', () => {
   const selected = selectToolsRelease([
