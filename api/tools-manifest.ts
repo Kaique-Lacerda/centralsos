@@ -1,4 +1,4 @@
-import { loadToolsManifestFromRelease, ToolsManifestProxyError, type ManifestFetcher } from '../server/ToolsManifestProxy';
+import { loadToolsManifestFromRelease, ToolsManifestProxyError, type ManifestFetcher } from '../server/ToolsManifestProxy.js';
 
 interface VercelRequest {
   method?: string;
