@@ -1,4 +1,5 @@
 import { fetchGitHubResponse, GITHUB_REPOSITORY_API } from '../releases/GitHubReleaseService';
+import { runtimeEnvironment } from '../runtime/environment';
 
 const RELEASES_API = `${GITHUB_REPOSITORY_API}/releases?per_page=100`;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -144,6 +145,17 @@ function validManifestAssetUrl(value: unknown): value is string {
   }
 }
 
+export function getToolsManifestRequest(
+  tag: string,
+  releaseAssetUrl: string,
+  environment: 'web' | 'desktop' = runtimeEnvironment
+): { url: string; accept: string } {
+  if (environment === 'web') {
+    return { url: `/api/tools-manifest?tag=${encodeURIComponent(tag)}`, accept: 'application/json' };
+  }
+  return { url: releaseAssetUrl, accept: MANIFEST_ACCEPT };
+}
+
 function validDownloadUrl(value: unknown): value is string {
   if (!stringValue(value)) return false;
   try {
@@ -240,7 +252,8 @@ export async function getGitHubToolsCatalog(options: {
     return result;
   }
 
-  const manifestResponse = await fetchGitHubResponse(manifests[0].url, { fetcher, accept: MANIFEST_ACCEPT });
+  const manifestRequest = getToolsManifestRequest(selected.tag_name, manifests[0].url, runtimeEnvironment);
+  const manifestResponse = await fetchGitHubResponse(manifestRequest.url, { fetcher, accept: manifestRequest.accept });
   if (manifestResponse.status === 404) {
     const result: GitHubToolsLookup = { status: 'manifest-missing', release };
     cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
