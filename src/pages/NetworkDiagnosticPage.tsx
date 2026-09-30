@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle, CircleAlert, Monitor, Network, RefreshCw } from 'lucide-react';
 import { runtimeEnvironment } from '../services/runtime/environment';
 import { NetworkService } from '../services/network/NetworkService';
-import { classifyNetworkAdapter, networkConnectionState, partialNetworkNotice, summarizeNetwork } from '../services/network/NetworkDiagnostic';
+import { classifyNetworkAdapter, networkConnectionState, partialNetworkNotice, splitNetworkAdapters, summarizeNetwork } from '../services/network/NetworkDiagnostic';
 import type { NetworkAdapterSnapshot, SnapshotCollection } from '../types/machine';
 import '../network-diagnostic.css';
 
@@ -12,9 +12,14 @@ function valueOrUnavailable(values: string[], fallback = 'Não disponível') {
   return values.length ? values.join(', ') : fallback;
 }
 
+function ipv4Values(values: string[]) { return values.filter(value => !value.includes(':')); }
+function ipv6Values(values: string[]) { return values.filter(value => value.includes(':')); }
+
 function NetworkAdapterCard({ adapter, isPrimary }: { adapter: NetworkAdapterSnapshot; isPrimary: boolean }) {
   const kind = classifyNetworkAdapter(adapter);
   const state = networkConnectionState(adapter.status);
+  const gatewaysIpv4 = ipv4Values(adapter.gateways);
+  const dnsIpv4 = ipv4Values(adapter.dnsServers);
   return <article className="network-adapter-card">
     <header className="network-adapter-heading">
       <div className="network-card-icon"><Network size={18}/></div>
@@ -29,12 +34,19 @@ function NetworkAdapterCard({ adapter, isPrimary }: { adapter: NetworkAdapterSna
     </header>
     {adapter.productName&&<p className="network-device">Dispositivo: {adapter.productName}{adapter.manufacturer?` · ${adapter.manufacturer}`:''}</p>}
     <dl className="network-adapter-details">
-      <div><dt>MAC</dt><dd>{adapter.mac||'Não disponível'}</dd></div>
       <div><dt>IPv4</dt><dd>{valueOrUnavailable(adapter.ipv4)}</dd></div>
-      <div><dt>IPv6</dt><dd>{valueOrUnavailable(adapter.ipv6)}</dd></div>
-      <div><dt>Gateway</dt><dd>{valueOrUnavailable(adapter.gateways,'Não disponível')}</dd></div>
-      <div><dt>DNS</dt><dd>{valueOrUnavailable(adapter.dnsServers,'Não disponível')}</dd></div>
+      <div><dt>Gateway IPv4</dt><dd>{valueOrUnavailable(gatewaysIpv4)}</dd></div>
+      <div><dt>DNS IPv4</dt><dd>{valueOrUnavailable(dnsIpv4)}</dd></div>
     </dl>
+    <details className="network-secondary-details">
+      <summary>Detalhes de rede</summary>
+      <dl className="network-adapter-details secondary">
+        <div><dt>MAC</dt><dd>{adapter.mac||'Não disponível'}</dd></div>
+        <div><dt>IPv6</dt><dd>{valueOrUnavailable(ipv6Values(adapter.ipv6))}</dd></div>
+        <div><dt>Gateways IPv6</dt><dd>{valueOrUnavailable(ipv6Values(adapter.gateways))}</dd></div>
+        <div><dt>DNS IPv6</dt><dd>{valueOrUnavailable(ipv6Values(adapter.dnsServers))}</dd></div>
+      </dl>
+    </details>
   </article>;
 }
 
@@ -57,6 +69,9 @@ export function NetworkDiagnosticPage() {
 
   const summary = collection ? summarizeNetwork(collection) : null;
   const collectionNotice = collection ? partialNetworkNotice(collection) : null;
+  const { visibleAdapters, otherAdapters } = collection
+    ? splitNetworkAdapters(collection.items)
+    : { visibleAdapters: [], otherAdapters: [] };
   return <>
     <header className="network-page-heading">
       <div><small>FERRAMENTA · CONECTIVIDADE</small><h1>Diagnóstico de Rede</h1><p>Interfaces, endereços e rotas disponíveis no snapshot. Consulta somente leitura.</p></div>
@@ -68,21 +83,23 @@ export function NetworkDiagnosticPage() {
       {capturedAt&&<p className="network-captured">Atualizado em {new Date(capturedAt).toLocaleString()}</p>}
       {collectionNotice&&<p className="notice"><AlertTriangle/>{collectionNotice}</p>}
       <section className="network-summary" aria-label="Resumo da rede">
-        <div><small>Interfaces</small><b>{summary.total}</b><span>retornadas pelo Windows</span></div>
-        <div><small>Conectadas</small><b>{summary.connected}</b><span>estado confirmado</span></div>
-        <div><small>Desconectadas</small><b>{summary.disconnected}</b><span>estado confirmado</span></div>
-        <div><small>VPNs</small><b>{summary.vpns}</b><span>indicadores identificados</span></div>
-        <div><small>Virtuais / sistema</small><b>{summary.virtualOrSystem}</b><span>classificação identificada</span></div>
+        <div><small>Interfaces relevantes</small><b>{summary.relevantCount}</b><span>na visão principal</span></div>
+        <div><small>Conectadas</small><b>{summary.connectedCount}</b><span>estado da interface</span></div>
+        <div><small>Físicas desconectadas</small><b>{summary.disconnectedPhysicalCount}</b><span>adaptadores físicos</span></div>
+        <div><small>VPNs ativas</small><b>{summary.activeVpnCount}</b><span>túneis conectados</span></div>
+        <div><small>Sistema / infraestrutura</small><b>{summary.infrastructureCount}</b><span>em Outras interfaces</span></div>
+        <div><small>Outras interfaces</small><b>{summary.otherCount}</b><span>recolhidas abaixo</span></div>
       </section>
       <section className={`network-primary-summary ${summary.primary?'selected':'unknown'}`}>
-        <div><small>Conexão principal</small><b>{summary.primary?.name??'Não determinado'}</b></div>
+        <div><small>Conexão principal{summary.primary?' · Conectado':''}</small><b>{summary.primary?.name??'Não determinado'}</b></div>
         {summary.primary
-          ? <p>{valueOrUnavailable(summary.primary.ipv4)} · Gateway {valueOrUnavailable(summary.primary.gateways)} · DNS {valueOrUnavailable(summary.primary.dnsServers)}</p>
+          ? <dl className="network-primary-fields"><div><dt>IPv4</dt><dd>{valueOrUnavailable(summary.primary.ipv4)}</dd></div><div><dt>Gateway IPv4</dt><dd>{valueOrUnavailable(ipv4Values(summary.primary.gateways))}</dd></div><div><dt>DNS IPv4</dt><dd>{valueOrUnavailable(ipv4Values(summary.primary.dnsServers))}</dd></div></dl>
           : <p>{summary.primaryCandidateCount>1?'Há múltiplas interfaces conectadas com IPv4 e gateway; não foi possível escolher uma sem consultar prioridade de rotas.':'Nenhuma interface apresentou simultaneamente conexão confirmada, IPv4 utilizável e gateway.'}</p>}
+        <small className="network-connectivity-note">O estado Conectado descreve a interface; não confirma acesso à Internet.</small>
       </section>
-      {summary.total===0
-        ? <div className="empty network-empty"><Network/><b>Nenhuma interface retornada</b><p>{collection.error?'Consulte o aviso de coleta parcial acima.':'O Windows não retornou adaptadores de rede.'}</p></div>
-        : <section className="network-adapter-list" aria-label="Interfaces de rede">{collection.items.map((adapter,index)=><NetworkAdapterCard key={`${adapter.name}-${index}`} adapter={adapter} isPrimary={adapter===summary.primary}/>)}</section>}
+      {visibleAdapters.length===0&&<div className="empty network-empty"><Network/><b>Nenhuma interface relevante identificada</b><p>O inventário completo permanece disponível em Outras interfaces.</p></div>}
+      {visibleAdapters.length>0&&<><h2 className="network-section-title">Interfaces importantes ({visibleAdapters.length})</h2><section className="network-adapter-list" aria-label="Interfaces importantes">{visibleAdapters.map((adapter,index)=><NetworkAdapterCard key={`${adapter.name}-${index}`} adapter={adapter} isPrimary={adapter===summary.primary}/>)}</section></>}
+      {otherAdapters.length>0&&<details className="network-other-interfaces"><summary>Outras interfaces ({otherAdapters.length})</summary><section className="network-adapter-list" aria-label="Outras interfaces">{otherAdapters.map((adapter,index)=><NetworkAdapterCard key={`${adapter.name}-${index}`} adapter={adapter} isPrimary={false}/>)}</section></details>}
     </>}
   </>;
 }

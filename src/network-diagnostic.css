@@ -4,7 +4,7 @@
 .network-page-heading p{font-size:11px;color:#858d9b;margin:4px 0}
 .network-refresh{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .network-captured{font-size:10px;color:#858d9b;margin:11px 2px}
-.network-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:12px 0}
+.network-summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:12px 0}
 .network-summary>div{min-width:0;padding:13px;background:#171a21;border:1px solid #2a2e38;border-radius:8px;display:flex;flex-direction:column;gap:4px}
 .network-summary small,.network-summary span{font-size:10px;color:#858d9b}
 .network-summary b{font:600 16px Manrope;overflow-wrap:anywhere}
@@ -27,9 +27,20 @@
 .network-badge.state-connecting,.network-badge.state-unknown,.network-badge.unknown{background:#332e23;color:#d8bb7a}
 .network-badge.kind{background:#28243a;color:#c1afff}
 .network-device{font-size:9px;color:#858d9b;margin:10px 0 0;overflow-wrap:anywhere}
-.network-adapter-details{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0 0}
+.network-adapter-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 0}
+.network-adapter-details.secondary{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px}
 .network-adapter-details>div{min-width:0;padding:9px;background:#12151b;border-radius:5px}
 .network-adapter-details dt{font-size:9px;color:#858d9b;margin-bottom:4px}
 .network-adapter-details dd{font-size:10px;margin:0;overflow-wrap:anywhere;word-break:break-word}
+.network-secondary-details{margin-top:9px;color:#aab1bf;font-size:10px}
+.network-secondary-details summary,.network-other-interfaces>summary{cursor:pointer;color:#ad98f3;user-select:none}
+.network-other-interfaces{margin-top:18px;padding:14px 16px;background:#171a21;border:1px solid #2a2e38;border-radius:8px;color:#dce0e8;font-size:11px}
+.network-other-interfaces .network-adapter-list{margin-top:12px}
+.network-primary-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:11px 0 0}
+.network-primary-fields>div{min-width:0;padding:9px;background:#12151b;border-radius:5px}
+.network-primary-fields dt{font-size:9px;color:#858d9b;margin-bottom:4px}
+.network-primary-fields dd{font-size:10px;margin:0;overflow-wrap:anywhere}
+.network-connectivity-note{display:block;color:#858d9b;font-size:9px;margin-top:10px}
+.network-section-title{font:600 13px Manrope;margin:18px 0 8px;color:#dce0e8}
 .network-empty{margin-top:14px}
-@media(max-width:1100px){.network-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.network-adapter-details{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.network-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.network-adapter-details.secondary{grid-template-columns:repeat(2,minmax(0,1fr))}}
