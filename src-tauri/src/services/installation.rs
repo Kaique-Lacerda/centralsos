@@ -409,10 +409,11 @@ fn parse_uninstall_entries(output: &str, hive: &str, view: &str, entries: &mut V
             values.clear();
             continue;
         }
-        let mut parts = trimmed
-            .splitn(3, char::is_whitespace)
-            .filter(|v| !v.is_empty());
-        if let (Some(name), Some(kind), Some(value)) = (parts.next(), parts.next(), parts.next()) {
+        // reg.exe pads columns with multiple spaces; preserve spaces inside the value.
+        if let Some((name, rest)) = trimmed.split_once(char::is_whitespace) {
+            let Some((kind, value)) = rest.trim_start().split_once(char::is_whitespace) else {
+                continue;
+            };
             if kind.starts_with("REG_") {
                 values.insert(name.to_ascii_lowercase(), value.trim().to_owned());
             }
