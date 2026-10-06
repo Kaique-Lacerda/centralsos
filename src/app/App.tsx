@@ -7,6 +7,7 @@ import { runtimeEnvironment } from '../services/runtime/environment';
 import { PrinterDiagnosticPage } from '../pages/PrinterDiagnosticPage';
 import { NetworkDiagnosticPage } from '../pages/NetworkDiagnosticPage';
 import { WindowsServicesDiagnosticPage } from '../pages/WindowsServicesDiagnosticPage';
+import { navigationItems } from './navigation';
 
 const toolPages: Record<string, ComponentType> = {
   'computer-diagnostic': DiagnosticPage,
@@ -29,4 +30,9 @@ function ToolRoute({ toolId }: { toolId: string }) {
   return Page ? <Page /> : <main className="page">A página desta ferramenta ainda não está disponível.</main>;
 }
 
-export function App(){return <Routes><Route element={<Shell/>}><Route index element={<Dashboard/>}/><Route path="tools" element={<ToolsPage/>}/>{toolRegistry.map(tool=><Route key={tool.id} path={tool.path.replace(/^\//,'')} element={<ToolRoute toolId={tool.id}/>}/>)}<Route path="validation" element={<ValidationPage/>}/><Route path="installations" element={<InstallationsPage/>}/><Route path="favorites" element={<FavoritesPage/>}/><Route path="support" element={<SupportPage/>}/><Route path="settings" element={<SettingsPage/>}/><Route path="download" element={<DownloadPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Route></Routes>}
+function NavigationPage({ path, Page }: { path: string; Page: ComponentType }) {
+  if (!navigationItems.find(item => item.path === path)?.enabled) return <Navigate to="/" replace />;
+  return <Page />;
+}
+
+export function App(){return <Routes><Route element={<Shell/>}><Route index element={<Dashboard/>}/><Route path="tools" element={<ToolsPage/>}/>{toolRegistry.map(tool=><Route key={tool.id} path={tool.path.replace(/^\//,'')} element={<ToolRoute toolId={tool.id}/>}/>)}<Route path="validation" element={<ValidationPage/>}/><Route path="installations" element={<InstallationsPage/>}/><Route path="favorites" element={<NavigationPage path="/favorites" Page={FavoritesPage}/>}/><Route path="support" element={<NavigationPage path="/support" Page={SupportPage}/>}/><Route path="settings" element={<SettingsPage/>}/><Route path="download" element={<DownloadPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Route></Routes>}
