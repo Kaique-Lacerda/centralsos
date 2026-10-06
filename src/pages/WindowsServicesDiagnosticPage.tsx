@@ -5,6 +5,11 @@ import { WindowsServicesService } from '../services/windows-services/WindowsServ
 import { isPriorityServiceStopped, isPriorityWindowsService } from '../services/windows-services/WindowsServicePresentation';
 import type { SnapshotCollection, WindowsServiceSnapshot } from '../types/machine';
 import '../windows-services-diagnostic.css';
+import { SupportService } from '../services/support/SupportService';
+import { correctKnownServices } from '../services/support/SupportRepair';
+import { canCorrectService } from '../services/support/SupportInterpretation';
+import type { ServiceAction } from '../types/support';
+import { useSupportConfirmation } from './support/SupportUI';
 
 type ServiceFilter = 'all' | 'running' | 'stopped' | 'disabled';
 
@@ -12,7 +17,7 @@ function normalized(value: string | null) {
   return value?.trim().toLocaleLowerCase() ?? '';
 }
 
-function ServiceCard({ service }: { service: WindowsServiceSnapshot }) {
+function ServiceCard({ service, busy, action }: { service: WindowsServiceSnapshot; busy: boolean; action: (service: WindowsServiceSnapshot, action: ServiceAction) => void }) {
   const state = service.state || service.status || 'Não disponível';
   const stateClass = normalized(service.state) === 'running' ? 'running' : normalized(service.state) === 'stopped' ? 'stopped' : 'unknown';
   const priority = isPriorityWindowsService(service);
@@ -30,17 +35,24 @@ function ServiceCard({ service }: { service: WindowsServiceSnapshot }) {
         </div>
       </div>
     </header>
-    <dl className="windows-service-details">
+    <div className="support-actions">
+      <button className="primary" disabled={busy || service.state !== 'Stopped' || normalized(service.startMode) === 'disabled'} onClick={() => action(service, 'start')}>{canCorrectService(service) ? 'Corrigir · Iniciar' : 'Iniciar'}</button>
+      <button className="linkbtn" disabled={busy || service.state !== 'Running'} onClick={() => action(service, 'restart')}>Reiniciar</button>
+      <button className="linkbtn" disabled={busy || service.state !== 'Running'} onClick={() => action(service, 'stop')}>Parar</button>
+    </div>
+    <details className="support-details"><summary>Detalhes técnicos</summary><dl className="windows-service-details">
       <div><dt>Inicialização</dt><dd>{service.startMode || 'Não disponível'}</dd></div>
       <div><dt>Status</dt><dd>{service.status || 'Não disponível'}</dd></div>
       <div><dt>Executado como</dt><dd>{service.startName || 'Não disponível'}</dd></div>
       <div className="path"><dt>Executável associado</dt><dd>{service.pathName || 'Não disponível'}</dd></div>
       {service.description && <div className="description"><dt>Descrição</dt><dd>{service.description}</dd></div>}
-    </dl>
+    </dl></details>
   </article>;
 }
 
 export function WindowsServicesDiagnosticPage() {
+  const { confirm, dialog } = useSupportConfirmation();
+  const [message, setMessage] = useState('');
   const [collection, setCollection] = useState<SnapshotCollection<WindowsServiceSnapshot> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -61,6 +73,22 @@ export function WindowsServicesDiagnosticPage() {
       setBusy(false);
     }
   };
+  const act = async (service: WindowsServiceSnapshot, action: ServiceAction) => {
+    if (busy || !service.name || runtimeEnvironment !== 'desktop') return;
+    const automatic = action === 'start' && canCorrectService(service);
+    if (!automatic && !await confirm(`${action === 'stop' ? 'Parar' : action === 'restart' ? 'Reiniciar' : 'Iniciar'} ${service.displayName || service.name}? Isso pode interromper aplicações ou conexões. Nenhuma configuração de inicialização será alterada.`)) return;
+    setBusy(true); setError(''); setMessage('');
+    try { const result = await SupportService.serviceAction(service.name, action, !automatic); setCollection(await WindowsServicesService.getServices()); setMessage(`${result.after.displayName || result.after.name}: ${result.after.state}. ${result.message}`); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); try { setCollection(await WindowsServicesService.getServices()); } catch { /* Preserve the last known inventory; the operation error remains visible. */ } }
+    finally { setBusy(false); }
+  };
+  const verify = async () => {
+    if (busy || runtimeEnvironment !== 'desktop') return;
+    setBusy(true); setError(''); setMessage('');
+    try { const fresh = await WindowsServicesService.getServices(); if (fresh.error) throw new Error(fresh.error); const results = await correctKnownServices(SupportService, fresh.items); setCollection(await WindowsServicesService.getServices()); setMessage(results.join(' ') || 'Nenhum serviço de suporte conhecido parado e habilitado exigiu correção.'); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
+  };
 
   const items = collection?.items ?? [];
   const running = items.filter(service => normalized(service.state) === 'running').length;
@@ -77,16 +105,18 @@ export function WindowsServicesDiagnosticPage() {
       const matchesSearch = !search || [service.name, service.displayName, service.pathName, service.description]
         .some(value => normalized(value).includes(search));
       return matchesFilter && matchesSearch;
-    }).sort((a, b) => (a.displayName || a.name || '').localeCompare(b.displayName || b.name || '', 'pt-BR'));
+    }).sort((a, b) => Number(isPriorityWindowsService(b)) - Number(isPriorityWindowsService(a)) || (a.displayName || a.name || '').localeCompare(b.displayName || b.name || '', 'pt-BR'));
   }, [filter, items, query]);
 
   return <>
     <header className="windows-services-page-heading">
-      <div><small>FERRAMENTA · SISTEMA</small><h1>Diagnóstico de Serviços do Windows</h1><p>Inventário e estado atual dos serviços. Consulta WMI somente leitura.</p></div>
+      <div><small>FERRAMENTAS</small><h1>Serviços</h1><p>Estado atual e ações explícitas. A inicialização não é alterada automaticamente.</p></div>
       <button className="primary windows-services-refresh" disabled={busy || runtimeEnvironment !== 'desktop'} onClick={refresh}><RefreshCw size={14}/>{busy ? 'Consultando…' : collection ? 'Atualizar diagnóstico' : 'Consultar serviços'}</button>
     </header>
     {runtimeEnvironment === 'web' && <p className="notice"><Monitor/> A consulta dos serviços locais exige o Desktop Windows. Nenhuma coleta foi executada no navegador.</p>}
     {error && <p className="error"><CircleAlert/>{error}</p>}
+    {message && <p className="notice">{message}</p>}
+    <button className="primary" disabled={busy || runtimeEnvironment !== 'desktop'} onClick={verify}>Verificar e corrigir</button>
     {collection?.error && <p className="notice"><CircleAlert/>{collection.error}</p>}
     {collection && <>
       {capturedAt && <p className="windows-services-captured">Consultado em {new Date(capturedAt).toLocaleString()}</p>}
@@ -104,7 +134,8 @@ export function WindowsServicesDiagnosticPage() {
       </div>
       {visible.length === 0
         ? <div className="empty windows-services-empty"><Cog/><b>{items.length ? 'Nenhum serviço corresponde à busca' : 'Nenhum serviço retornado'}</b><p>{items.length ? 'Altere o texto ou o filtro para ver outros serviços.' : collection.error ? 'A consulta WMI não retornou dados; veja o detalhe acima.' : 'O Windows não retornou serviços nesta consulta.'}</p></div>
-        : <section className="windows-services-list" aria-label="Serviços do Windows">{visible.map((service, index) => <ServiceCard key={`${service.name ?? service.displayName ?? 'service'}-${index}`} service={service}/>)}</section>}
+        : <section className="windows-services-list" aria-label="Serviços do Windows">{visible.map((service, index) => <ServiceCard key={`${service.name ?? service.displayName ?? 'service'}-${index}`} service={service} busy={busy} action={act}/>)}</section>}
     </>}
+    {dialog}
   </>;
 }

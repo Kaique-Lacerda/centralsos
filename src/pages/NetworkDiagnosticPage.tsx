@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { AlertTriangle, CircleAlert, Monitor, Network, RefreshCw } from 'lucide-react';
 import { runtimeEnvironment } from '../services/runtime/environment';
-import { NetworkService } from '../services/network/NetworkService';
+import { SupportService } from '../services/support/SupportService';
+import type { NetworkSupportSnapshot } from '../types/support';
+import { NetworkOperationsPanel } from './support/NetworkOperationsPanel';
+import '../support-tools.css';
 import { classifyNetworkAdapter, networkConnectionState, partialNetworkNotice, splitNetworkAdapters, summarizeNetwork } from '../services/network/NetworkDiagnostic';
 import type { NetworkAdapterSnapshot, SnapshotCollection } from '../types/machine';
 import '../network-diagnostic.css';
@@ -51,6 +54,8 @@ function NetworkAdapterCard({ adapter, isPrimary }: { adapter: NetworkAdapterSna
 }
 
 export function NetworkDiagnosticPage() {
+  const [support, setSupport] = useState<NetworkSupportSnapshot|null>(null);
+  const [message, setMessage] = useState('');
   const [collection, setCollection] = useState<SnapshotCollection<NetworkAdapterSnapshot>|null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,13 +63,22 @@ export function NetworkDiagnosticPage() {
 
   const refresh = async () => {
     if (runtimeEnvironment !== 'desktop') return;
-    setBusy(true); setError('');
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
     try {
-      setCollection(await NetworkService.getAdapters());
+      const next = await SupportService.network();
+      setSupport(next); setCollection(next.adapters);
       setCapturedAt(Date.now());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao coletar os adaptadores de rede.');
     } finally { setBusy(false); }
+  };
+  const operate = async (operation: () => Promise<{ after: NetworkSupportSnapshot; message: string }>) => {
+    if (busy || runtimeEnvironment !== 'desktop') return;
+    setBusy(true); setError(''); setMessage('');
+    try { const result = await operation(); setSupport(result.after); setCollection(result.after.adapters); setCapturedAt(Date.now()); setMessage(result.message); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
   };
 
   const summary = collection ? summarizeNetwork(collection) : null;
@@ -74,14 +88,17 @@ export function NetworkDiagnosticPage() {
     : { visibleAdapters: [], otherAdapters: [] };
   return <>
     <header className="network-page-heading">
-      <div><small>FERRAMENTA · CONECTIVIDADE</small><h1>Diagnóstico de Rede</h1><p>Interfaces, endereços e rotas disponíveis no snapshot. Consulta somente leitura.</p></div>
+      <div><small>FERRAMENTAS</small><h1>Rede</h1><p>Interfaces, IP, DHCP, gateway, DNS, proxy e testes de conectividade.</p></div>
       <button className="primary network-refresh" disabled={busy||runtimeEnvironment!=='desktop'} onClick={refresh}><RefreshCw size={14}/>{busy?'Atualizando…':'Atualizar diagnóstico'}</button>
     </header>
     {runtimeEnvironment==='web'&&<p className="notice"><Monitor/> A consulta dos adaptadores locais depende do Desktop Windows. Nenhuma coleta local foi executada no navegador.</p>}
     {error&&<p className="error"><CircleAlert/>{error}</p>}
+    {message&&<p className="notice">{message}</p>}
+    {support&&<NetworkOperationsPanel snapshot={support} busy={busy} operate={operate}/>}
     {collection&&summary&&<>
       {capturedAt&&<p className="network-captured">Atualizado em {new Date(capturedAt).toLocaleString()}</p>}
       {collectionNotice&&<p className="notice"><AlertTriangle/>{collectionNotice}</p>}
+      <details className="support-details"><summary>Interfaces e detalhes de rede</summary>
       <section className="network-summary" aria-label="Resumo da rede">
         <div><small>Interfaces relevantes</small><b>{summary.relevantCount}</b><span>na visão principal</span></div>
         <div><small>Conectadas</small><b>{summary.connectedCount}</b><span>estado da interface</span></div>
@@ -100,6 +117,7 @@ export function NetworkDiagnosticPage() {
       {visibleAdapters.length===0&&<div className="empty network-empty"><Network/><b>Nenhuma interface relevante identificada</b><p>O inventário completo permanece disponível em Outras interfaces.</p></div>}
       {visibleAdapters.length>0&&<><h2 className="network-section-title">Interfaces importantes ({visibleAdapters.length})</h2><section className="network-adapter-list" aria-label="Interfaces importantes">{visibleAdapters.map((adapter,index)=><NetworkAdapterCard key={`${adapter.name}-${index}`} adapter={adapter} isPrimary={adapter===summary.primary}/>)}</section></>}
       {otherAdapters.length>0&&<details className="network-other-interfaces"><summary>Outras interfaces ({otherAdapters.length})</summary><section className="network-adapter-list" aria-label="Outras interfaces">{otherAdapters.map((adapter,index)=><NetworkAdapterCard key={`${adapter.name}-${index}`} adapter={adapter} isPrimary={false}/>)}</section></details>}
+      </details>
     </>}
   </>;
 }

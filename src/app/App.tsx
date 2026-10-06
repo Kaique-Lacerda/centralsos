@@ -8,12 +8,24 @@ import { PrinterDiagnosticPage } from '../pages/PrinterDiagnosticPage';
 import { NetworkDiagnosticPage } from '../pages/NetworkDiagnosticPage';
 import { WindowsServicesDiagnosticPage } from '../pages/WindowsServicesDiagnosticPage';
 import { navigationItems } from './navigation';
+import { ConnectivityPage } from '../pages/support/ConnectivityPage';
+import { FirebirdPage } from '../pages/support/FirebirdPage';
+import { SharesPage } from '../pages/support/SharesPage';
+import { SystemPage } from '../pages/support/SystemPage';
+import { ProcessesPage } from '../pages/support/ProcessesPage';
+import { DependenciesPage } from '../pages/support/DependenciesPage';
 
 const toolPages: Record<string, ComponentType> = {
   'computer-diagnostic': DiagnosticPage,
   'printer-diagnostic': PrinterDiagnosticPage,
   'network-diagnostic': NetworkDiagnosticPage,
-  'windows-services-diagnostic': WindowsServicesDiagnosticPage
+  'windows-services-diagnostic': WindowsServicesDiagnosticPage,
+  'connectivity': ConnectivityPage,
+  'firebird': FirebirdPage,
+  'shares': SharesPage,
+  'system-support': SystemPage,
+  'processes': ProcessesPage,
+  'dependencies': DependenciesPage
 };
 
 function ToolRoute({ toolId }: { toolId: string }) {
@@ -22,8 +34,8 @@ function ToolRoute({ toolId }: { toolId: string }) {
   if (!tool.availableOn.includes(runtimeEnvironment)) {
     return <main className="page">
       <h1>{tool.name}</h1>
-      <p>Este projeto foi pensado como aplicativo desktop Windows (.exe), não como serviço web público.</p>
-      <p>A navegação em browser é apenas para visualização e testes de interface. Dados locais só são coletados no ambiente desktop.</p>
+      <p>Esta ferramenta requer o aplicativo Desktop.</p>
+      <p>Dados locais e ações do Windows não são simulados no navegador.</p>
     </main>;
   }
   const Page = toolPages[tool.id];

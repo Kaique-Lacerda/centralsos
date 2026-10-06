@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {StaticRouter} from 'react-router-dom/server.js';
+const bundle=await build({entryPoints:[fileURLToPath(new URL('../../app/App.tsx',import.meta.url))],bundle:true,platform:'node',format:'esm',write:false,jsx:'automatic',loader:{'.css':'empty'},plugins:[{name:'shared-react',setup(b){b.onResolve({filter:/^(react(?:\/.*)?|react-dom(?:\/.*)?|react-router-dom(?:\/.*)?|lucide-react)$/},args=>({path:import.meta.resolve(args.path),external:true}));}}]});
+const {App}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
+const render=location=>renderToStaticMarkup(createElement(StaticRouter,{location},createElement(App)));
+test('Ferramentas mostra dez cards operacionais, sem nomes de diagnóstico/validação',()=>{const html=render('/tools');const catalog=html.split('class="tools-catalog"')[1];assert.ok(catalog);for(const name of ['Computador','Impressoras','Rede','Conectividade','Serviços','Firebird','Compartilhamentos','Sistema','Processos','Dependências'])assert.ok(catalog.includes(`<b>${name}</b>`));assert.equal([...catalog.matchAll(/class="tool"/g)].length,10);assert.doesNotMatch(catalog,/Diagnóstico de|Validação de/);});
+test('Rotas das novas ferramentas exigem Desktop e não renderizam controle local na Web',()=>{for(const path of ['connectivity','firebird','shares','system','processes','dependencies','network-diagnostic','windows-services-diagnostic']){const html=render(`/tools/${path}`);assert.match(html,/Esta ferramenta requer o aplicativo Desktop/);assert.doesNotMatch(html,/Verificar e corrigir|Limpar arquivos temporários|Encerrar processo/);}});
+test('Navegação ocultada anteriormente continua preservada',()=>{const nav=render('/tools').match(/<nav>([\s\S]*?)<\/nav>/)[1];assert.doesNotMatch(nav,/Favoritos|Suporte|\/favorites|\/support/);});
