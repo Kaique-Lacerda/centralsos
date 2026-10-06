@@ -61,6 +61,71 @@ export interface PrinterSnapshot {
   comment: string | null;
 }
 
+export interface PrintJobSnapshot {
+  jobId: number;
+  document: string | null;
+  user: string | null;
+  status: string;
+  statusBits?: number;
+  statusDetail: string | null;
+  sizeBytes: number;
+  totalPages: number | null;
+  pagesPrinted: number | null;
+  submittedAt: string | null;
+  position: number;
+}
+
+export interface PrinterQueueActionResult {
+  removedCount: number;
+  failedJobIds: number[];
+}
+
+export interface PrinterPermissionValues {
+  print: boolean;
+  managePrinter: boolean;
+  manageDocuments: boolean;
+}
+
+export interface PrinterPermissionEntry {
+  aceIndex: number;
+  sid: string | null;
+  account: string;
+  accessType: string;
+  permissions: PrinterPermissionValues | null;
+  specialPermissions: boolean;
+  inherited: boolean;
+  editable: boolean;
+}
+
+export interface PrinterPermissionsSnapshot {
+  state: 'available' | 'unrestricted' | 'unavailable' | string;
+  entries: PrinterPermissionEntry[];
+  notice: string | null;
+}
+
+export interface PrinterPermissionChangeResult {
+  account: string;
+  sid: string;
+  before: PrinterPermissionValues;
+  after: PrinterPermissionValues;
+  verified: boolean;
+}
+
+export interface PrinterConfigurationSnapshot {
+  printerName: string;
+  server: string | null;
+  shared: boolean;
+  shareName: string | null;
+  location: string | null;
+  comment: string | null;
+  port: string | null;
+  driver: string | null;
+  paused: boolean;
+  isElevated: boolean;
+  redirected: boolean;
+  permissions: PrinterPermissionsSnapshot;
+}
+
 export interface SnapshotCollection<T> {
   items: T[];
   error: string | null;

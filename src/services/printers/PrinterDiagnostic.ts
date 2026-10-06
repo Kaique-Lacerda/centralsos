@@ -42,6 +42,16 @@ export function classifyPrinterConnection(printer: PrinterSnapshot): PrinterConn
   return 'Não identificado';
 }
 
+export function getPrinterOperationalState(printer: PrinterSnapshot): { label: string; tone: 'success' | 'warning' | 'error' | 'unknown' } {
+  const normalized = printer.status?.trim().toLocaleLowerCase('pt-BR');
+  if (normalized === 'imprimindo') return { label: 'Imprimindo', tone: 'success' };
+  if (normalized === 'ociosa') return { label: 'Ociosa', tone: 'success' };
+  if (normalized === 'aquecendo') return { label: 'Conectada', tone: 'success' };
+  if (normalized === 'offline') return { label: 'Desconectada', tone: 'error' };
+  if (normalized === 'parada') return { label: 'Erro', tone: 'error' };
+  return { label: 'Desconhecido', tone: 'unknown' };
+}
+
 export function printerAvailability(status: string | null): boolean | null {
   if (!status) return null;
   const normalized = status.trim().toLocaleLowerCase('pt-BR');
