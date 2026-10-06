@@ -14,6 +14,7 @@ import { SharesPage } from '../pages/support/SharesPage';
 import { SystemPage } from '../pages/support/SystemPage';
 import { ProcessesPage } from '../pages/support/ProcessesPage';
 import { DependenciesPage } from '../pages/support/DependenciesPage';
+import {ControlPage} from '../pages/control/ControlPage';
 
 const toolPages: Record<string, ComponentType> = {
   'computer-diagnostic': DiagnosticPage,
@@ -47,4 +48,4 @@ function NavigationPage({ path, Page }: { path: string; Page: ComponentType }) {
   return <Page />;
 }
 
-export function App(){return <Routes><Route element={<Shell/>}><Route index element={<Dashboard/>}/><Route path="tools" element={<ToolsPage/>}/>{toolRegistry.map(tool=><Route key={tool.id} path={tool.path.replace(/^\//,'')} element={<ToolRoute toolId={tool.id}/>}/>)}<Route path="validation" element={<ValidationPage/>}/><Route path="installations" element={<InstallationsPage/>}/><Route path="favorites" element={<NavigationPage path="/favorites" Page={FavoritesPage}/>}/><Route path="support" element={<NavigationPage path="/support" Page={SupportPage}/>}/><Route path="settings" element={<SettingsPage/>}/><Route path="download" element={<DownloadPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Route></Routes>}
+export function App(){return <Routes><Route element={<Shell/>}><Route index element={<Dashboard/>}/><Route path="tools" element={<ToolsPage/>}/>{toolRegistry.map(tool=><Route key={tool.id} path={tool.path.replace(/^\//,'')} element={<ToolRoute toolId={tool.id}/>}/>)}<Route path="validation" element={<ValidationPage/>}/><Route path="installations" element={<InstallationsPage/>}/><Route path="favorites" element={<NavigationPage path="/favorites" Page={FavoritesPage}/>}/><Route path="support" element={<NavigationPage path="/support" Page={SupportPage}/>}/><Route path="settings" element={<SettingsPage/>}/><Route path="download" element={<DownloadPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Route><Route path="control" element={<ControlPage/>}/></Routes>}

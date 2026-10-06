@@ -16,6 +16,7 @@ import '../snapshot.css';
 import '../release-download.css';
 import { Cpu, Database, FolderOpen, Puzzle, Radio } from 'lucide-react';
 import '../support-tools.css';
+import {DesktopControlSettings} from './control/DesktopControlSettings';
 function Heading({tag,title,description}:{tag:string;title:string;description:string}){return <div className="heading"><small>{tag}</small><h1>{title}</h1><p>{description}</p></div>}
 const categoryLabels:Record<ValidationCategory,string>={system:'Sistema',network:'Rede',sharing:'Compartilhamento',files:'Arquivos / DLL',printers:'Impressão',storage:'Armazenamento',database:'Banco',firebird:'Firebird',backup:'Backup',ibconsole:'IBConsole',cloud_accounting:'Nuvem Contábil'};
 const validationCategoryOrder:ValidationCategory[]=['system','network','sharing','files','printers','storage','database','firebird','backup','ibconsole','cloud_accounting'];
@@ -46,7 +47,7 @@ export function InstallationsPage(){
 }
 export function FavoritesPage(){return <><Heading tag="ATALHOS" title="Favoritos" description="Acesse rapidamente suas ferramentas favoritas."/><div className="empty"><b>Nenhum favorito ainda</b><Link to="/tools">Explorar ferramentas</Link></div></>}
 export function SupportPage(){return <><Heading tag="ATENDIMENTO" title="Suporte" description="Área reservada para acesso assistido futuro."/><p className="notice"><ShieldCheck/> Demonstração visual. Nenhuma autenticação real está disponível.</p><div className="panel form"><h2>Acesso de suporte</h2><label>Técnico<select disabled><option>Disponível futuramente</option></select></label><label>Código de confirmação<input disabled placeholder="Código do técnico"/></label><label><input type="checkbox" disabled/> Confiar neste dispositivo por 1 dia</label><button className="primary" disabled>Continuar</button><small>Mock local declarado; sem login real.</small></div></>}
-export function SettingsPage(){const [env,setEnv]=useState(LocalConfigService.load());return <><Heading tag="PREFERÊNCIAS" title="Configurações" description="Perfil local, editável posteriormente."/><EnvironmentForm initial={env} onSave={setEnv}/></>}
+export function SettingsPage(){const [env,setEnv]=useState(LocalConfigService.load());return <><Heading tag="PREFERÊNCIAS" title="Configurações" description="Perfil local, editável posteriormente."/><EnvironmentForm initial={env} onSave={setEnv}/><DesktopControlSettings/></>}
 export function DownloadPage(){
   const [release,setRelease]=useState<WindowsReleaseLookup|null>(null);
   const [loading,setLoading]=useState(true);
