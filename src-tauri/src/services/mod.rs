@@ -1,6 +1,7 @@
 #[cfg(windows)]
 pub mod installation;
 pub mod snapshot;
+pub mod windows_admin;
 
 #[cfg(windows)]
 mod network;

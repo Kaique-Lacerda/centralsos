@@ -4,7 +4,7 @@
 .windows-services-page-heading p{font-size:11px;color:#858d9b;margin:4px 0}
 .windows-services-refresh{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .windows-services-captured{font-size:10px;color:#858d9b;margin:11px 2px}
-.windows-services-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
+.windows-services-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin:12px 0}
 .windows-services-summary>div{min-width:0;padding:13px;background:#171a21;border:1px solid #2a2e38;border-radius:8px;display:flex;flex-direction:column;gap:4px}
 .windows-services-summary small,.windows-services-summary span{font-size:10px;color:#858d9b}
 .windows-services-summary b{font:600 16px Manrope;overflow-wrap:anywhere}
@@ -18,6 +18,7 @@
 .windows-services-filter select option{background:#171a21}
 .windows-services-list{display:grid;gap:9px}
 .windows-service-card{padding:14px 15px;background:#171a21;border:1px solid #2a2e38;border-radius:8px}
+.windows-service-card.priority{border-color:#544731}.windows-service-card.priority-stopped{border-color:#76434a;background:#1d181b}
 .windows-service-heading{display:flex;align-items:flex-start;gap:10px}
 .windows-service-icon{width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border-radius:7px;background:#242130;color:#b6a2ef}
 .windows-service-title{min-width:0;flex:1}
@@ -27,6 +28,7 @@
 .windows-service-badge.running{background:#1d3027;color:#91d1a8}
 .windows-service-badge.stopped{background:#392326;color:#f0a2a2}
 .windows-service-badge.unknown,.windows-service-badge.disabled{background:#332e23;color:#d8bb7a}
+.windows-service-badge.priority{background:#332e23;color:#d8bb7a}.windows-service-badge.priority.stopped{background:#392326;color:#f0a2a2}
 .windows-service-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0 0}
 .windows-service-details>div{min-width:0;padding:8px;background:#12151b;border-radius:5px}
 .windows-service-details>div.path,.windows-service-details>div.description{grid-column:1/-1}

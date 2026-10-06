@@ -9,7 +9,11 @@ export interface MachineSystemSnapshot {
   username: string;
   operatingSystem: string | null;
   windowsVersion: string | null;
+  windowsBuild: string | null;
   architecture: string;
+  domainOrWorkgroup: string | null;
+  joinedToDomain: boolean | null;
+  uptimeSeconds: number | null;
   manufacturer: string | null;
   model: string | null;
   cpu: string | null;
@@ -52,6 +56,9 @@ export interface PrinterSnapshot {
   local: boolean | null;
   network: boolean | null;
   shared: boolean | null;
+  shareName: string | null;
+  location: string | null;
+  comment: string | null;
 }
 
 export interface SnapshotCollection<T> {

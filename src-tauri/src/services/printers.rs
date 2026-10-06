@@ -16,6 +16,9 @@ struct PrinterRow {
     local: Option<bool>,
     network: Option<bool>,
     shared: Option<bool>,
+    share_name: Option<String>,
+    location: Option<String>,
+    comment: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -25,7 +28,7 @@ struct PrinterNameRow {
 }
 
 pub fn collect(connection: &WMIConnection) -> (Vec<PrinterSnapshot>, Option<String>) {
-    let query = "SELECT Name, Default, DriverName, PortName, ServerName, PrinterStatus, Local, Network, Shared FROM Win32_Printer";
+    let query = "SELECT Name, Default, DriverName, PortName, ServerName, PrinterStatus, Local, Network, Shared, ShareName, Location, Comment FROM Win32_Printer";
     match connection.raw_query::<PrinterRow>(query) {
         Ok(rows) => (rows.into_iter().map(map_printer).collect(), None),
         Err(initial_error) => collect_individually(connection, initial_error.to_string()),
@@ -43,7 +46,7 @@ fn collect_individually(connection: &WMIConnection, initial_error: String) -> (V
     for name in names.into_iter().filter_map(|row| row.name) {
         let escaped_name = name.replace('\\', "\\\\").replace('\'', "\\'");
         let query = format!(
-            "SELECT Name, Default, DriverName, PortName, ServerName, PrinterStatus, Local, Network, Shared FROM Win32_Printer WHERE Name = '{escaped_name}'"
+            "SELECT Name, Default, DriverName, PortName, ServerName, PrinterStatus, Local, Network, Shared, ShareName, Location, Comment FROM Win32_Printer WHERE Name = '{escaped_name}'"
         );
         match connection.raw_query::<PrinterRow>(&query) {
             Ok(rows) => printers.extend(rows.into_iter().map(map_printer)),
@@ -68,6 +71,9 @@ fn map_printer(row: PrinterRow) -> PrinterSnapshot {
         local: row.local,
         network: row.network,
         shared: row.shared,
+        share_name: row.share_name,
+        location: row.location,
+        comment: row.comment,
     }
 }
 

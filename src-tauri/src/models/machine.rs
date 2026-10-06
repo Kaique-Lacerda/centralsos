@@ -15,7 +15,11 @@ pub struct MachineSystemSnapshot {
     pub username: String,
     pub operating_system: Option<String>,
     pub windows_version: Option<String>,
+    pub windows_build: Option<String>,
     pub architecture: String,
+    pub domain_or_workgroup: Option<String>,
+    pub joined_to_domain: Option<bool>,
+    pub uptime_seconds: Option<u64>,
     pub manufacturer: Option<String>,
     pub model: Option<String>,
     pub cpu: Option<String>,
@@ -64,6 +68,9 @@ pub struct PrinterSnapshot {
     pub local: Option<bool>,
     pub network: Option<bool>,
     pub shared: Option<bool>,
+    pub share_name: Option<String>,
+    pub location: Option<String>,
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
