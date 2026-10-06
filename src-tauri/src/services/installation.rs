@@ -265,7 +265,7 @@ struct FixedFileInfo {
     file_date_ls: u32,
 }
 
-fn executable_file_version(path: &str) -> Option<String> {
+pub(crate) fn executable_file_version(path: &str) -> Option<String> {
     let file_name = path
         .encode_utf16()
         .chain(std::iter::once(0))
@@ -550,7 +550,7 @@ fn executable_path(line: &str) -> String {
     }
     s.split_whitespace().next().unwrap_or(s).to_owned()
 }
-fn pe_architecture(path: &str) -> Option<String> {
+pub(crate) fn pe_architecture(path: &str) -> Option<String> {
     use std::io::{Read, Seek, SeekFrom};
     let mut f = fs::File::open(path).ok()?;
     let mut off = [0u8; 4];

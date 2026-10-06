@@ -1,6 +1,8 @@
 #[cfg(windows)]
 pub mod installation;
 pub mod snapshot;
+#[cfg(windows)]
+pub mod support;
 pub mod printer_operations;
 pub mod printer_management;
 pub mod printer_connections;
