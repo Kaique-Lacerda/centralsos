@@ -17,6 +17,8 @@ struct ComputerSystemRow {
     manufacturer: Option<String>,
     model: Option<String>,
     total_physical_memory: Option<u64>,
+    domain: Option<String>,
+    part_of_domain: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -43,23 +45,23 @@ pub fn collect(connection: &WMIConnection, result: &mut MachineSystemSnapshot) {
         Ok(rows) => {
             if let Some(row) = rows.into_iter().next() {
                 result.operating_system = row.caption;
-                result.windows_version = row.version.map(|version| match row.build_number {
-                    Some(build) => format!("{version} (build {build})"),
-                    None => version,
-                });
+                result.windows_version = row.version;
+                result.windows_build = row.build_number;
             }
         }
         Err(error) => issues.push(format!("Sistema operacional: {error}")),
     }
 
     match connection.raw_query::<ComputerSystemRow>(
-        "SELECT Manufacturer, Model, TotalPhysicalMemory FROM Win32_ComputerSystem",
+        "SELECT Manufacturer, Model, TotalPhysicalMemory, Domain, PartOfDomain FROM Win32_ComputerSystem",
     ) {
         Ok(rows) => {
             if let Some(row) = rows.into_iter().next() {
                 result.manufacturer = row.manufacturer;
                 result.model = row.model;
                 result.ram_bytes = row.total_physical_memory;
+                result.domain_or_workgroup = row.domain;
+                result.joined_to_domain = row.part_of_domain;
             }
         }
         Err(error) => issues.push(format!("Fabricante/modelo/memória: {error}")),
@@ -94,4 +96,11 @@ pub fn collect(connection: &WMIConnection, result: &mut MachineSystemSnapshot) {
     if !issues.is_empty() {
         result.error = Some(issues.join(" | "));
     }
+
+    result.uptime_seconds = Some(unsafe { GetTickCount64() / 1000 });
+}
+
+#[link(name = "kernel32")]
+extern "system" {
+    fn GetTickCount64() -> u64;
 }

@@ -7,8 +7,8 @@ async function load(entry) {
   const bundle = await build({ entryPoints: [fileURLToPath(new URL(entry, import.meta.url))], bundle: true, platform: 'node', format: 'esm', write: false });
   return import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
 }
-const { classifyPrinter, getPrinterSignals, partialCollectionNotice, printerAvailability, summarizePrinters } = await load('../PrinterDiagnostic.ts');
-const printer = (overrides = {}) => ({ name: 'Impressora', isDefault: false, driver: 'Driver', port: 'USB001', server: null, status: 'Ociosa', local: true, network: false, shared: false, ...overrides });
+const { classifyPrinter, getPrinterHealth, getPrinterSignals, getPrinterTechnicalDetails, partialCollectionNotice, printerAvailability, summarizePrinters } = await load('../PrinterDiagnostic.ts');
+const printer = (overrides = {}) => ({ name: 'Impressora', isDefault: false, driver: 'Driver', port: 'USB001', server: null, status: 'Ociosa', local: true, network: false, shared: false, shareName: null, location: null, comment: null, ...overrides });
 
 test('classifica somente por propriedades coletadas, sem inferir tipo por nome', () => {
   assert.equal(classifyPrinter(printer({ local: true })), 'Local');
@@ -32,6 +32,20 @@ test('status só indica disponibilidade quando o valor é reconhecido', () => {
   assert.equal(printerAvailability('Imprimindo'), true);
   assert.equal(printerAvailability('Desconhecido'), null);
   assert.equal(printerAvailability(null), null);
+});
+
+test('classifica impressora pronta, atenção, problema e não validada', () => {
+  assert.equal(getPrinterHealth(printer()).status, 'ok');
+  assert.equal(getPrinterHealth(printer({ driver: 'Driver', port: null, status: 'Ociosa' })).status, 'attention');
+  assert.equal(getPrinterHealth(printer({ driver: 'Driver', port: 'USB001', status: 'Offline' })).status, 'problem');
+  assert.equal(getPrinterHealth(printer({ driver: null, port: null, status: null })).status, 'not-validated');
+});
+
+test('detalhes técnicos informam caminho compartilhado e origem sem presumir configuração', () => {
+  const details = getPrinterTechnicalDetails(printer({ server: 'PRINT01', shareName: 'Financeiro' }));
+  assert.equal(details.find(item => item.label === 'Caminho do compartilhamento')?.detected, '\\\\PRINT01\\Financeiro');
+  assert.match(details.find(item => item.label === 'Estado').source, /PrinterStatus/);
+  assert.match(details.find(item => item.label === 'Estado').expected, /não define/);
 });
 
 test('lista vazia e erro parcial permanecem explícitos no resumo', () => {

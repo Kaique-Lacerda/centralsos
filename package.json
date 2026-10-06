@@ -9,7 +9,7 @@
     "typecheck": "tsc -b --pretty",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs src/services/releases/tests/*.test.mjs",
+    "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs src/services/releases/tests/*.test.mjs src/services/windows/tests/*.test.mjs src/services/windows-services/tests/*.test.mjs src/pages/tests/*.test.mjs",
     "test:tools": "node --test src/services/tools/tests/*.test.mjs"
   },
   "dependencies": {

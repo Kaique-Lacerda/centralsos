@@ -15,6 +15,8 @@
 .installation-tool-title h2{margin:0;font:600 14px Manrope;overflow-wrap:anywhere}
 .installation-tool-type{padding:3px 7px;border-radius:99px;background:#242831;color:#aab1bf;font-size:9px}
 .installation-tool-body>p{margin:5px 0 9px;color:#aab1bf;font-size:11px}
+.installation-state-badge{display:inline-flex;padding:4px 8px;margin:0 0 8px;border-radius:99px;background:#242831;color:#aab1bf;font-size:9px}
+.installation-state-badge.installed{background:#1d3027;color:#91d1a8}.installation-state-badge.update-available,.installation-state-badge.not-installed{background:#332e23;color:#d8bb7a}.installation-state-badge.unavailable,.installation-state-badge.error{background:#392326;color:#f0a2a2}
 .installation-tool-metadata{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .installation-tool-metadata span{display:flex;align-items:center;gap:4px;padding:4px 7px;border-radius:5px;background:#12151b;color:#929baa;font-size:9px}
 .installation-tool-metadata .installation-admin{color:#d8bb7a}
