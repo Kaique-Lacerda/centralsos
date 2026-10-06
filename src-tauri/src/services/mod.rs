@@ -1,6 +1,7 @@
 #[cfg(windows)]
 pub mod installation;
 pub mod snapshot;
+pub mod agent_metadata;
 #[cfg(windows)]
 pub mod support;
 pub mod printer_operations;
@@ -8,7 +9,9 @@ pub mod printer_management;
 pub mod printer_connections;
 pub mod printer_diagnostics;
 pub mod printer_spooler;
+#[cfg(feature = "desktop")]
 pub mod printer_queue_monitor;
+#[cfg(feature = "desktop")]
 pub mod windows_admin;
 
 #[cfg(windows)]

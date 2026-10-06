@@ -1,10 +1,28 @@
 mod commands;
-pub mod models;
-mod services;
+pub use central_sos_core::{models, services};
+fn updater_config()->Option<serde_json::Value>{
+    use base64::Engine;
+    let key=option_env!("CENTRAL_SOS_UPDATER_PUBLIC_KEY")?.trim();let endpoint=option_env!("CENTRAL_SOS_UPDATER_URL")?.trim();
+    let decoded=base64::engine::general_purpose::STANDARD.decode(key).ok()?;let text=String::from_utf8(decoded).ok()?;
+    if !text.starts_with("untrusted comment:")||!text.lines().nth(1).is_some_and(|s|s.starts_with("RW")){return None;}
+    let raw_key=base64::engine::general_purpose::STANDARD.decode(text.lines().nth(1)?).ok()?;
+    if raw_key.len()!=42 || ![b"Ed".as_slice(),b"ED".as_slice()].contains(&&raw_key[..2]) {return None;}
+    let url=reqwest::Url::parse(endpoint).ok()?;if url.scheme()!="https"||url.host_str().is_none()||url.password().is_some()||!url.username().is_empty()||endpoint.contains("/releases/latest/")||endpoint.contains("tools-v"){return None;}
+    Some(serde_json::json!({"pubkey":key,"endpoints":[endpoint],"windows":{"installMode":"passive"}}))
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let mut context=tauri::generate_context!();
+    let config=updater_config();
+    if let Some(config)=config.as_ref(){context.config_mut().plugins.0.insert("updater".into(),config.clone());}
     tauri::Builder::default()
+        .setup(move|app|{if config.is_some(){app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;}Ok(())})
         .invoke_handler(tauri::generate_handler![
+            commands::control::agent_status,
+            commands::control::agent_enroll,
+            commands::control::agent_unlink,
+            commands::control::updater_configuration,
+            commands::control::restart_after_update,
             commands::system::get_machine_snapshot,
             commands::support::support_get_network,
             commands::support::support_test_connectivity,
@@ -59,6 +77,6 @@ pub fn run() {
             commands::windows_admin::open_network_settings,
             commands::windows_admin::open_admin_terminal
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("falha ao iniciar CENTRAL SOS");
 }

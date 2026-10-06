@@ -1,4 +1,6 @@
 fn main() {
+    println!("cargo:rerun-if-env-changed=CENTRAL_SOS_UPDATER_PUBLIC_KEY");
+    println!("cargo:rerun-if-env-changed=CENTRAL_SOS_UPDATER_URL");
     let attributes = tauri_build::Attributes::new();
     #[cfg(windows)]
     let attributes = {

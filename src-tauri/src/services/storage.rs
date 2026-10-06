@@ -14,9 +14,15 @@ struct LogicalDiskRow {
 }
 
 pub fn collect(connection: &WMIConnection) -> Result<Vec<VolumeSnapshot>, String> {
+    query(connection, "SELECT DeviceID, VolumeName, Size, FreeSpace FROM Win32_LogicalDisk")
+}
+pub fn collect_local(connection: &WMIConnection) -> Result<Vec<VolumeSnapshot>, String> {
+    query(connection, "SELECT DeviceID, VolumeName, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType=2 OR DriveType=3 OR DriveType=5 OR DriveType=6")
+}
+fn query(connection: &WMIConnection, query: &str) -> Result<Vec<VolumeSnapshot>, String> {
     connection
         .raw_query::<LogicalDiskRow>(
-            "SELECT DeviceID, VolumeName, Size, FreeSpace FROM Win32_LogicalDisk",
+            query,
         )
         .map(|rows| {
             rows.into_iter()

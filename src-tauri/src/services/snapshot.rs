@@ -4,6 +4,13 @@ use sysinfo::System;
 use crate::models::machine::{MachineSnapshot, SnapshotCollection};
 
 pub fn collect_machine_snapshot() -> MachineSnapshot {
+    collect(false)
+}
+/// Session 0 adapter: never inventories user printers or mapped volumes.
+pub fn collect_machine_snapshot_for_agent() -> MachineSnapshot {
+    collect(true)
+}
+fn collect(agent: bool) -> MachineSnapshot {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
@@ -15,6 +22,7 @@ pub fn collect_machine_snapshot() -> MachineSnapshot {
     snapshot.system.username = std::env::var("USERNAME")
         .or_else(|_| std::env::var("USER"))
         .unwrap_or_else(|_| "Indisponível".into());
+    if agent { snapshot.system.username.clear(); }
     snapshot.system.architecture = std::env::consts::ARCH.into();
 
     #[cfg(windows)]
@@ -22,13 +30,13 @@ pub fn collect_machine_snapshot() -> MachineSnapshot {
         match wmi::WMIConnection::new() {
             Ok(connection) => {
                 super::system::collect(&connection, &mut snapshot.system);
-                snapshot.storage = collect_section(super::storage::collect(&connection));
+                snapshot.storage = collect_section(if agent { super::storage::collect_local(&connection) } else { super::storage::collect(&connection) });
                 let (network, network_error) = super::network::collect(&connection);
                 snapshot.network = SnapshotCollection {
                     items: network,
                     error: network_error,
                 };
-                let (printers, printer_error) = super::printers::collect(&connection);
+                let (printers, printer_error) = if agent { (vec![], Some("USER_SESSION_REQUIRED".into())) } else { super::printers::collect(&connection) };
                 snapshot.printers = SnapshotCollection { items: printers, error: printer_error };
             }
             Err(error) => {
