@@ -38,4 +38,7 @@ const toolsManifestDevRoute: Plugin = {
   }
 };
 
-export default defineConfig({ plugins: [react(), toolsManifestDevRoute], clearScreen: false, server: { strictPort: true, port: 1420 } });
+export default defineConfig({ plugins: [react(), toolsManifestDevRoute], clearScreen: false, server: {
+  strictPort: true, port: 1420,
+  proxy: { '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
+} });
