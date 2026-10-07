@@ -3,7 +3,7 @@ import { CircleAlert, Cog, Monitor, RefreshCw, Search } from 'lucide-react';
 import { runtimeEnvironment } from '../services/runtime/environment';
 import { WindowsServicesService } from '../services/windows-services/WindowsServicesService';
 import { isPriorityServiceStopped, isPriorityWindowsService } from '../services/windows-services/WindowsServicePresentation';
-import type { SnapshotCollection, WindowsServiceSnapshot } from '../types/machine';
+import type { SnapshotCollection, WindowsServiceSnapshot } from '../../packages/contracts/machine';
 import '../windows-services-diagnostic.css';
 import { SupportService } from '../services/support/SupportService';
 import { correctKnownServices } from '../services/support/SupportRepair';

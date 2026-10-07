@@ -1,6 +1,6 @@
 import { analyzeDiagnosis } from './Correlation';
 import { createDiagnosisCollector, emptyObservations, type CollectionClients } from './DiagnosisCollector';
-import { isProblemJob } from '../printers/PrinterAutoFix';
+import { isProblemJob } from '../../../packages/agent-rules/printers/PrinterAutoFix';
 import { canExecuteRemediation, remediationResolved, revalidationComplete } from './RemediationPolicy';
 import type { DiagnosisResult, Incident, Progress, RemediationAttempt } from './types';
 

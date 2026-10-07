@@ -1,11 +1,11 @@
 import { getPrinterActionAvailability } from './PrinterOperations';
 import { validatePrinterUnc, type DiscoveredPrinter } from './PrinterConnections';
-import type { SnapshotCollection } from '../../types/machine';
-import type { PrinterDiagnosticSnapshot, PrinterNativeState, SpoolerState, SpoolerActionResult, TcpPrintProbe } from '../../types/printer-diagnostic';
+import type { SnapshotCollection } from '../../../packages/contracts/machine';
+import type { PrinterDiagnosticSnapshot, PrinterNativeState, SpoolerState, SpoolerActionResult, TcpPrintProbe } from '../../../packages/contracts/printer-diagnostic';
 import type {
   PrintJobSnapshot, PrinterQueueActionResult, PrinterConfigurationSnapshot,
   PrinterPermissionChangeResult, PrinterPermissionValues,
-} from '../../types/machine';
+} from '../../../packages/contracts/machine';
 
 type InvokeCommand = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 

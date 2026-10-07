@@ -5,14 +5,14 @@ import { PrinterService } from '../services/printers/PrinterService';
 import { PrinterDiagnosticsPanel, PrinterSpoolerPanel } from './PrinterDiagnosticsPanel';
 import { PrinterAddPanel } from './PrinterAddPanel';
 import { createPrinterQueueMonitor } from '../services/printers/PrinterQueueMonitor';
-import { jobStateLabels } from '../services/printers/PrinterHealth';
-import { diagnosticConnection } from '../services/printers/PrinterPresence';
+import { jobStateLabels } from '../../packages/agent-rules/printers/PrinterHealth';
+import { diagnosticConnection } from '../../packages/agent-rules/printers/PrinterPresence';
 import { createPrinterPresenceMonitor } from '../services/printers/PrinterPresenceMonitor';
 import { presentPrinter, summarizePrinterPresentation, type PrinterPresentationState } from '../services/printers/PrinterPresentation';
-import type { PrinterDiagnosticSnapshot } from '../types/printer-diagnostic';
+import type { PrinterDiagnosticSnapshot } from '../../packages/contracts/printer-diagnostic';
 import { classifyPrinterConnection, partialCollectionNotice } from '../services/printers/PrinterDiagnostic';
 import { getPrinterActionAvailability, getPrinterConfigurationActionAvailability, getPrinterTestErrorMessage, getQueueEmptyMessage, getQueuePagesLabel, getQueueSizeLabel, getQueueStatus, getQueueClearMessage, validatePrinterName, validatePrinterShareName } from '../services/printers/PrinterOperations';
-import type { PrintJobSnapshot, PrinterSnapshot, SnapshotCollection, PrinterConfigurationSnapshot, PrinterPermissionsSnapshot, PrinterPermissionValues } from '../types/machine';
+import type { PrintJobSnapshot, PrinterSnapshot, SnapshotCollection, PrinterConfigurationSnapshot, PrinterPermissionsSnapshot, PrinterPermissionValues } from '../../packages/contracts/machine';
 import '../printer-diagnostic.css';
 
 function errorText(error: unknown, fallback: string): string {

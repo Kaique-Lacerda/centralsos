@@ -1,4 +1,4 @@
-import type { CommandStatus, Device, Environment, RemoteCommand, RemoteCommandResult } from '../../src/control/contracts.js';
+import type { CommandStatus, Device, Environment, RemoteCommand, RemoteCommandResult } from '../../packages/contracts/control/contracts.js';
 export interface Actor {
     id: string;
     name: string;

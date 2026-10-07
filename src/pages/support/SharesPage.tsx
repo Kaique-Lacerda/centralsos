@@ -3,7 +3,7 @@ import { FolderOpen } from 'lucide-react';
 import { runtimeEnvironment } from '../../services/runtime/environment';
 import { SupportService } from '../../services/support/SupportService';
 import type { ShareInfo, ShareSnapshot } from '../../types/support';
-import type { SnapshotCollection } from '../../types/machine';
+import type { SnapshotCollection } from '../../../packages/contracts/machine';
 import { CheckRow, SupportHeader, SupportFeedback, TechnicalDetails, useSupportTask } from './SupportUI';
 export function SharesPage() {
   const [path, setPath] = useState(''); const [host, setHost] = useState(''); const task = useSupportTask<ShareSnapshot>(); const list = useSupportTask<SnapshotCollection<ShareInfo>>();

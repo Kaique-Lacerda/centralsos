@@ -6,8 +6,8 @@ import {build} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 async function load(entry){const r=await build({entryPoints:[fileURLToPath(new URL(entry,import.meta.url))],bundle:true,platform:'node',format:'esm',write:false,jsx:'automatic',loader:{'.css':'empty'},plugins:[{name:'shared-react',setup(b){b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},args=>({path:import.meta.resolve(args.path),external:true}));}}]});return import(`data:text/javascript;base64,${Buffer.from(r.outputFiles[0].contents).toString('base64')}`);}
-const {collectPrinterKnownIssues:issues,printerIssueDecision:decision}=await load('../PrinterKnownIssues.ts');
-const {runPrinterAutoFix,automaticRepairPlan,isProblemJob}=await load('../PrinterAutoFix.ts');
+const {collectPrinterKnownIssues:issues,printerIssueDecision:decision}=await load('../../../../packages/agent-rules/printers/PrinterKnownIssues.ts');
+const {runPrinterAutoFix,automaticRepairPlan,isProblemJob}=await load('../../../../packages/agent-rules/printers/PrinterAutoFix.ts');
 const {validatePrinterUnc}=await load('../PrinterConnections.ts');
 const {createPrinterActionClient}=await load('../PrinterActionClient.ts');
 const {presentPrinter}=await load('../PrinterPresentation.ts');

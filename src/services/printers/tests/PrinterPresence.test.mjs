@@ -5,9 +5,9 @@ import {build} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 async function load(entry){const r=await build({entryPoints:[fileURLToPath(new URL(entry,import.meta.url))],bundle:true,platform:'node',format:'esm',write:false,jsx:'automatic',plugins:[{name:'shared-react',setup(b){b.onResolve({filter:/^react(?:\/.*)?$/},args=>({path:import.meta.resolve(args.path),external:true}));}}]});return import(`data:text/javascript;base64,${Buffer.from(r.outputFiles[0].contents).toString('base64')}`);}
-const {printerPresence,diagnosticConnection,comId}=await load('../PrinterPresence.ts');
-const {diagnosePort,printerSummaryHealth}=await load('../PrinterHealth.ts');
-const {automaticRepairPlan,shouldRestartSpooler,canRepairSupportPermissions,runPrinterAutoFix}=await load('../PrinterAutoFix.ts');
+const {printerPresence,diagnosticConnection,comId}=await load('../../../../packages/agent-rules/printers/PrinterPresence.ts');
+const {diagnosePort,printerSummaryHealth}=await load('../../../../packages/agent-rules/printers/PrinterHealth.ts');
+const {automaticRepairPlan,shouldRestartSpooler,canRepairSupportPermissions,runPrinterAutoFix}=await load('../../../../packages/agent-rules/printers/PrinterAutoFix.ts');
 const {createPrinterPresenceMonitor}=await load('../PrinterPresenceMonitor.ts');
 const {PrinterDiagnosticsPanel}=await load('../../../pages/PrinterDiagnosticsPanel.tsx');
 const col=(items=[],error=null)=>({items,error});

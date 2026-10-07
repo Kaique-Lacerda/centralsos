@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { runtimeEnvironment } from '../runtime/environment';
-import type { MachineSnapshot } from '../../types/machine';
+import type { MachineSnapshot } from '../../../packages/contracts/machine';
 
 export const MachineSnapshotService = {
   getSnapshot(): Promise<MachineSnapshot> {

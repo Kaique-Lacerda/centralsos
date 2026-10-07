@@ -1,4 +1,4 @@
-import type { InstalledSoftware, ValidationResult, ValidationRule } from '../../types';
+import type { InstalledSoftware, ValidationResult, ValidationRule } from '../../../../contracts/validation';
 
 function make(id: string, title: string, category: ValidationResult['category'], status: ValidationResult['status'], description: string, expected?: string, actual?: string): ValidationResult {
   return { ruleId: id, title, category, status, severity: status === 'error' ? 'error' : status === 'warning' ? 'warning' : 'info', description, expected, actual };

@@ -1,4 +1,4 @@
-import type { QueueMonitorEvent } from '../../types/printer-diagnostic';
+import type { QueueMonitorEvent } from '../../../packages/contracts/printer-diagnostic';
 
 export interface QueueMonitorDependencies<T> {
   query:()=>Promise<T>;receive:(value:T)=>void;error:(error:unknown)=>void;busy:(busy:boolean)=>void;

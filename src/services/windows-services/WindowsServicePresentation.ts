@@ -1,4 +1,4 @@
-import type { WindowsServiceSnapshot } from '../../types/machine';
+import type { WindowsServiceSnapshot } from '../../../packages/contracts/machine';
 import { isOperationalService } from '../support/SupportInterpretation';
 
 const PRIORITY_SERVICE_NAMES = new Set([

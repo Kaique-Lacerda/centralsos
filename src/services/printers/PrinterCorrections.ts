@@ -1,5 +1,7 @@
-import type { PrinterDiagnosticSnapshot, SpoolerActionResult } from '../../types/printer-diagnostic';
-import { jobProblems } from './PrinterHealth';
+import type { PrinterDiagnosticSnapshot, SpoolerActionResult } from '../../../packages/contracts/printer-diagnostic';
+import { jobProblems } from '../../../packages/agent-rules/printers/PrinterHealth';
+import { diagnosticRecord } from '../../../packages/agent-rules/printers/PrinterDiagnosticRecord';
+export { diagnosticRecord } from '../../../packages/agent-rules/printers/PrinterDiagnosticRecord';
 
 export type CorrectionId='startSpooler'|'restartSpooler'|'resume'|'cancelErrors'|'clearQueue';
 export interface CorrectionOption {id:CorrectionId;label:string;selected:boolean;available:boolean;notice:string}
@@ -22,7 +24,6 @@ export interface CorrectionClient {
   resume:(name:string)=>Promise<void>;cancelJob:(name:string,id:number)=>Promise<void>;
   clearQueue:(name:string)=>Promise<{removedCount:number;failedJobIds:number[]}>;
 }
-export function diagnosticRecord(s:PrinterDiagnosticSnapshot):string {return JSON.stringify({spooler:s.spooler,printer:s.printer,queue:s.queue,presentDevices:s.presentDevices});}
 export async function executeCorrections(client:CorrectionClient,name:string,selected:CorrectionId[],confirmed:boolean) {
   if(!confirmed)throw new Error('Confirme o plano de correção antes de executar.');
   const reports:CorrectionReport[]=[];

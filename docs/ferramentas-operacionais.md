@@ -122,7 +122,7 @@ Alterados para integração:
 - src/pages/WindowsServicesDiagnosticPage.tsx
 - src/services/windows-services/WindowsServicePresentation.ts
 - src/tools/registry.ts
-- src/types/machine.ts (campos de rede adicionais)
+- packages/contracts/machine.ts (campos de rede adicionais)
 - src-tauri/src/commands/mod.rs
 - src-tauri/src/commands/windows_services.rs
 - src-tauri/src/lib.rs

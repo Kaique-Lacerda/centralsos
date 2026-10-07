@@ -102,8 +102,8 @@ O teste é opt-in porque CI/Session 0 não representa um usuário interativo; ne
 - `crates/link/src/session/{mod.rs,windows.rs,tests.rs}`
 - `crates/agent/src/{main.rs,engine.rs,runner.rs,session.rs}`
 - `crates/session-helper/{Cargo.toml,Cargo.lock,src/main.rs,src/collector.rs}`
-- `src/control/{SessionHelperContract.ts,CommandPolicy.ts,command-policy.json,contracts.ts}`
-- `src/agent/RulesRuntime.ts`, `src/pages/control/ControlPage.tsx`
+- `packages/contracts/control/{SessionHelperContract.ts,CommandPolicy.ts,command-policy.json,contracts.ts}`
+- `packages/agent-rules/RulesRuntime.ts`, `src/pages/control/ControlPage.tsx`
 - `tests/control/{Security.test.mjs,SessionHelper.test.mjs}`
 - `docs/session-helper.md`, atualização da seção Session Helper em `docs/control-agent-updater.md`
 

@@ -7,8 +7,8 @@ import { MachineSnapshotService } from '../services/snapshot/MachineSnapshotServ
 import { WindowsAdminService, type WindowsAdminAction } from '../services/windows/WindowsAdminService';
 import { getPrinterHealth, getPrinterTechnicalDetails } from '../services/printers/PrinterDiagnostic';
 import { runMachineValidation } from '../services/validation/runMachineValidation';
-import type { MachineSnapshot } from '../types/machine';
-import type { MachineValidationRun, ValidationStatus } from '../services/validation/types';
+import type { MachineSnapshot } from '../../packages/contracts/machine';
+import type { MachineValidationRun, ValidationStatus } from '../../packages/contracts/validation';
 import type { ComputerNetworkSummaryAdapter } from '../services/network/ComputerNetworkSummary';
 
 function formatBytes(bytes: number | null) {

@@ -66,7 +66,7 @@ flowchart LR
 - Release → updater: validação de assinatura pelo plugin oficial; chave privada
   fica somente na máquina de assinatura. Metadados do servidor não substituem assinatura.
 
-Separação atual: contratos/políticas em `src/control`, application em
+Separação atual: contratos/políticas em `packages/contracts/control`, application em
 `server/control/ControlBackend.ts`, interfaces em `Repository.ts`, adapters
 PostgreSQL/autenticação/rate-limit, HTTP em `HttpApi.ts` + `/api`. Pasta única
 server/control não impede essas fronteiras; não houve reorganização cosmética.
@@ -79,7 +79,7 @@ por administração externa, não por dados enviados pelo device.
 
 ## Execution contexts
 
-Classificação declarada em `src/control/CommandPolicy.ts`:
+Classificação declarada em `packages/contracts/control/CommandPolicy.ts`:
 
 | Operação/dado | Contexto | Limite |
 |---|---|---|
@@ -149,7 +149,7 @@ Operações antigas printer.check/auto_fix ainda não estão habilitadas no Help
 
 ## Matriz central de comandos
 
-Fonte única `src/control/command-policy.json`, compilada no Agent via include_str.
+Fonte única `packages/contracts/control/command-policy.json`, compilada no Agent via include_str.
 Não pode ser substituída por configuração/manifesto recebido da rede.
 
 | Comando | Contexto | Risco | Usuário | Confirmação | Timeout s | Idempotente | Auditoria |
@@ -420,7 +420,7 @@ Comandos:
 
 24 arquivos da fundação ajustados (em relação ao início desta revisão):
 
-- src/control/contracts.ts; src/agent/RulesRuntime.ts
+- packages/contracts/control/contracts.ts; packages/agent-rules/RulesRuntime.ts
 - src/pages/control/ControlPage.tsx; src/pages/control/DesktopControlSettings.tsx
 - src/services/control/AgentLinkService.ts
 - server/control/ControlBackend.ts; server/control/Repository.ts
@@ -433,8 +433,8 @@ Comandos:
 
 5 arquivos novos:
 
-- src/control/command-policy.json; src/control/CommandPolicy.ts
-- src/control/SessionHelperContract.ts; crates/link/src/policy.rs
+- packages/contracts/control/command-policy.json; packages/contracts/control/CommandPolicy.ts
+- packages/contracts/control/SessionHelperContract.ts; crates/link/src/policy.rs
 - tests/control/Security.test.mjs
 
 Comparação SHA-256 do estado anterior: 223 arquivos existentes preservados ou

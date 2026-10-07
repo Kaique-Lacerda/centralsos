@@ -1,5 +1,5 @@
 import { MachineSnapshotService } from '../snapshot/MachineSnapshotService';
-import type { MachineSystemSnapshot } from '../../types/machine';
+import type { MachineSystemSnapshot } from '../../../packages/contracts/machine';
 
 export const SystemService = {
   async getSystemInfo(): Promise<MachineSystemSnapshot> {

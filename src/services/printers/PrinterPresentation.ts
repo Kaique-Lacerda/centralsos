@@ -1,8 +1,8 @@
-import type { PrinterDiagnosticSnapshot } from '../../types/printer-diagnostic';
-import { automaticRepairPlan, isProblemJob, shouldRestartSpooler } from './PrinterAutoFix';
-import { diagnosePort, diagnosePrinter, printerNativeHealth, printerSummaryHealth } from './PrinterHealth';
-import { diagnosticConnection, isRemotePrinter, isRedirected, isVirtualPrinter } from './PrinterPresence';
-import { collectPrinterKnownIssues } from './PrinterKnownIssues';
+import type { PrinterDiagnosticSnapshot } from '../../../packages/contracts/printer-diagnostic';
+import { automaticRepairPlan, isProblemJob, shouldRestartSpooler } from '../../../packages/agent-rules/printers/PrinterAutoFix';
+import { diagnosePort, diagnosePrinter, printerNativeHealth, printerSummaryHealth } from '../../../packages/agent-rules/printers/PrinterHealth';
+import { diagnosticConnection, isRemotePrinter, isRedirected, isVirtualPrinter } from '../../../packages/agent-rules/printers/PrinterPresence';
+import { collectPrinterKnownIssues } from '../../../packages/agent-rules/printers/PrinterKnownIssues';
 
 export type PrinterPrimaryStatus='ok'|'disconnected'|'attention'|'error'|'paused'|'offline'|'unknown';
 export type PrinterPresentationTone='success'|'warning'|'error'|'unknown';

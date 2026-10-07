@@ -1,4 +1,4 @@
-import type { PresentPrintDevice, PrinterDiagnosticSnapshot } from '../../types/printer-diagnostic';
+import type { PresentPrintDevice, PrinterDiagnosticSnapshot } from '../../contracts/printer-diagnostic';
 
 export type DiagnosticConnection='Redirecionada / Terminal Services'|'Compartilhada / Remota'|'TCP/IP / Rede'|'COM / Local'|'USB / Local'|'Virtual'|'Porta lógica'|'Local / Não identificado';
 export function comId(port:string|null):string|null {

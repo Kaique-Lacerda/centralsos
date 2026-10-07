@@ -1,7 +1,7 @@
-import type { MachineSnapshot, SnapshotCollection, WindowsServiceSnapshot } from '../../types/machine';
-import type { PrinterDiagnosticSnapshot, SpoolerState } from '../../types/printer-diagnostic';
+import type { MachineSnapshot, SnapshotCollection, WindowsServiceSnapshot } from '../../../packages/contracts/machine';
+import type { PrinterDiagnosticSnapshot, SpoolerState } from '../../../packages/contracts/printer-diagnostic';
 import type { FirebirdSnapshot, NetworkSupportSnapshot, SoftwareInfo, SystemSupportSnapshot } from '../../types/support';
-import type { MachineValidationRun } from '../validation/types';
+import type { MachineValidationRun } from '../../../packages/contracts/validation';
 import { diagnosisAreas, type DiagnosisArea, type DiagnosisObservations, type Progress } from './types';
 
 export interface CollectionClients {

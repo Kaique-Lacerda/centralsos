@@ -1,7 +1,7 @@
-import type { MachineSnapshot, SnapshotCollection, WindowsServiceSnapshot } from '../../types/machine';
-import type { PrinterDiagnosticSnapshot, SpoolerState } from '../../types/printer-diagnostic';
+import type { MachineSnapshot, SnapshotCollection, WindowsServiceSnapshot } from '../../../packages/contracts/machine';
+import type { PrinterDiagnosticSnapshot, SpoolerState } from '../../../packages/contracts/printer-diagnostic';
 import type { FirebirdSnapshot, NetworkSupportSnapshot, SoftwareInfo, SystemSupportSnapshot } from '../../types/support';
-import type { MachineValidationRun } from '../validation/types';
+import type { MachineValidationRun } from '../../../packages/contracts/validation';
 
 export const diagnosisAreas = ['system', 'network', 'services', 'firebird', 'printing', 'dependencies', 'compliance'] as const;
 export type DiagnosisArea = typeof diagnosisAreas[number];

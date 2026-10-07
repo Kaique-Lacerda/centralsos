@@ -1,7 +1,7 @@
-import type { PrinterDiagnosticSnapshot, SpoolerActionResult } from '../../types/printer-diagnostic';
-import type { PrintJobSnapshot, PrinterPermissionsSnapshot } from '../../types/machine';
+import type { PrinterDiagnosticSnapshot, SpoolerActionResult } from '../../contracts/printer-diagnostic';
+import type { PrintJobSnapshot, PrinterPermissionsSnapshot } from '../../contracts/machine';
 import { diagnosePort, jobProblems, printerNativeHealth } from './PrinterHealth';
-import { diagnosticRecord } from './PrinterCorrections';
+import { diagnosticRecord } from './PrinterDiagnosticRecord';
 import { isRedirected, isRemotePrinter, printerPresence } from './PrinterPresence';
 import { collectPrinterKnownIssues, needsPhysicalIntervention } from './PrinterKnownIssues';
 

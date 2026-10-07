@@ -1,4 +1,4 @@
-import type { NetworkAdapterSnapshot, SnapshotCollection } from '../../types/machine';
+import type { NetworkAdapterSnapshot, SnapshotCollection } from '../../../packages/contracts/machine';
 
 export type NetworkAdapterKind = 'Físico' | 'Virtual' | 'VPN' | 'Sistema' | 'Não determinado';
 export type NetworkConnectionState = 'connected' | 'disconnected' | 'connecting' | 'unknown';

@@ -4,7 +4,7 @@ import { SupportService } from '../../services/support/SupportService';
 import { dependencyFamily, dependencyState } from '../../services/support/SupportInterpretation';
 import { getGitHubToolsCatalog } from '../../services/tools/GitHubToolsService';
 import type { SoftwareInfo } from '../../types/support';
-import type { SnapshotCollection } from '../../types/machine';
+import type { SnapshotCollection } from '../../../packages/contracts/machine';
 import { SupportHeader, SupportFeedback, TechnicalDetails, useSupportTask, InstallationsLink } from './SupportUI';
 export function DependenciesPage() {
   const task = useSupportTask<SnapshotCollection<SoftwareInfo>>(); const [catalogNames, setCatalogNames] = useState<string[]>([]);

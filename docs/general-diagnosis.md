@@ -72,7 +72,7 @@ Alterados:
 - `src/services/network/NetworkDiagnostic.ts` (estado administrativo explícito)
 - `src/services/support/NetworkKnownIssues.ts` (VPN sem exigência genérica de gateway/DNS)
 - `src/services/printers/PrinterService.ts` (exposição da operação existente de cancelamento seguro)
-- `src/types/machine.ts` (tipo do volume opcional)
+- `packages/contracts/machine.ts` (tipo do volume opcional)
 - `crates/core/src/models/machine.rs` (contrato de tipo do volume, compatível com snapshots antigos)
 - `crates/core/src/services/storage.rs` (DriveType na consulta existente)
 - `crates/core/src/services/support/services.rs` (proteção do RPC Endpoint Mapper e testes de serviços críticos)

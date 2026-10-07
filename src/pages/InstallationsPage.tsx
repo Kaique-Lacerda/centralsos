@@ -4,7 +4,7 @@ import { getGitHubToolsCatalog, type CatalogTool, type GitHubToolsLookup } from 
 import { getToolInstallationStatus } from '../services/tools/ToolInstallationStatus';
 import { runtimeEnvironment } from '../services/runtime/environment';
 import { InstallationSnapshotService } from '../services/validation/installation/InstallationSnapshotService';
-import type { InstallationSnapshot } from '../services/validation/types';
+import type { InstallationSnapshot } from '../../packages/contracts/validation';
 import '../installations.css';
 
 function formatToolSize(bytes: number | null) {

@@ -1,9 +1,9 @@
-import type { MachineRole } from '../../types';
+import type { MachineRole } from '../../contracts/profile';
 import { resourceRules } from './rules/baseline/resources';
 import { systemRules } from './rules/baseline/system';
 import { serverRules } from './rules/server/installation';
 import { terminalRules } from './rules/terminal/baseline';
-import type { ValidationCategory, ValidationResult, ValidationRule } from './types';
+import type { ValidationCategory, ValidationResult, ValidationRule } from '../../contracts/validation';
 
 const baselineRules: readonly ValidationRule[] = [...systemRules, ...resourceRules];
 const rules: readonly ValidationRule[] = [...baselineRules, ...terminalRules, ...serverRules];

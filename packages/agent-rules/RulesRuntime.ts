@@ -1,9 +1,9 @@
-import { runPrinterAutoFix, type AutoFixClient } from '../services/printers/PrinterAutoFix';
-import { ValidationEngine } from '../services/validation/ValidationEngine';
-import type { MachineSnapshot } from '../types/machine';
-import type { InstallationSnapshot } from '../services/validation/types';
-import type { CommandType, DeviceProfile } from '../control/contracts';
-import { commandDefinitions } from '../control/CommandPolicy';
+import { runPrinterAutoFix, type AutoFixClient } from './printers/PrinterAutoFix';
+import { ValidationEngine } from './validation/ValidationEngine';
+import type { MachineSnapshot } from '../contracts/machine';
+import type { InstallationSnapshot } from '../contracts/validation';
+import type { CommandType, DeviceProfile } from '../contracts/control/contracts';
+import { commandDefinitions } from '../contracts/control/CommandPolicy';
 export const sessionRequired = (operation: string) => ({
     status: 'USER_SESSION_REQUIRED' as const, code: 'USER_SESSION_REQUIRED' as const,
     executionContext: 'USER_SESSION_REQUIRED' as const, operation,

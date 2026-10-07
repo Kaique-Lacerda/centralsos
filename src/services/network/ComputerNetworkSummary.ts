@@ -1,4 +1,4 @@
-import type { NetworkAdapterSnapshot } from '../../types/machine';
+import type { NetworkAdapterSnapshot } from '../../../packages/contracts/machine';
 import { classifyNetworkAdapter, splitNetworkAdapters, type NetworkAdapterKind } from './NetworkDiagnostic';
 
 export interface ComputerNetworkSummaryAdapter {

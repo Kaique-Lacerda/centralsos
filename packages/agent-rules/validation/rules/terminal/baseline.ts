@@ -1,4 +1,4 @@
-import type { ValidationResult, ValidationRule, ValidationCategory, InspectionValue } from '../../types';
+import type { ValidationResult, ValidationRule, ValidationCategory, InspectionValue } from '../../../../contracts/validation';
 
 function result(id: string, title: string, category: ValidationCategory, status: ValidationResult['status'], description: string, expected?: string, actual?: string): ValidationResult {
   return { ruleId: id, title, category, status, severity: status === 'error' ? 'error' : status === 'warning' ? 'warning' : 'info', description, expected, actual };

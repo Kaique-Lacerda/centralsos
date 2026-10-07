@@ -1,7 +1,7 @@
 import type { SupportClient } from './SupportService';
 import { collectNetworkIssues, type NetworkKnownIssue } from './NetworkKnownIssues';
 import { canCorrectService } from './SupportInterpretation';
-import type { WindowsServiceSnapshot } from '../../types/machine';
+import type { WindowsServiceSnapshot } from '../../../packages/contracts/machine';
 
 export async function repairNetwork(client: SupportClient, confirm: (issue: NetworkKnownIssue) => Promise<boolean>) {
   const before = await client.network(); const messages: string[] = [];

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { commandPolicies, commandDefinitions, PROTOCOL_VERSION, buildTopology, type Device, type Environment, type CommandType, type RemoteCommandResult } from '../../control/contracts';
+import { commandPolicies, commandDefinitions, PROTOCOL_VERSION, buildTopology, type Device, type Environment, type CommandType, type RemoteCommandResult } from '../../../packages/contracts/control/contracts';
 import { ControlService } from '../../services/control/ControlService';
 import { compareVersions } from '../../services/updater/UpdateContract';
 import { getLatestWindowsRelease } from '../../services/releases/GitHubReleaseService';

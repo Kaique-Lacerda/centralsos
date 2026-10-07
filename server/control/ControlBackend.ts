@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { commandDefinitions, PROTOCOL_VERSION, commandRequestSchema, enrollmentSchema, heartbeatSchema, resultSchema, canTransition, isOnline, deviceStatus } from '../../src/control/contracts.js';
-import type { CommandStatus, Device, RemoteCommand } from '../../src/control/contracts.js';
+import { commandDefinitions, PROTOCOL_VERSION, commandRequestSchema, enrollmentSchema, heartbeatSchema, resultSchema, canTransition, isOnline, deviceStatus } from '../../packages/contracts/control/contracts.js';
+import type { CommandStatus, Device, RemoteCommand } from '../../packages/contracts/control/contracts.js';
 import type { Actor, ControlState, Repository } from './Repository.js';
 export class ApiError extends Error {
     constructor(public status: number, message: string) { super(message); }

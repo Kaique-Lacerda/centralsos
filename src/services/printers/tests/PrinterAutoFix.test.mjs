@@ -5,7 +5,7 @@ import {build} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 async function load(entry){const r=await build({entryPoints:[fileURLToPath(new URL(entry,import.meta.url))],bundle:true,platform:'node',format:'esm',write:false,jsx:'automatic',plugins:[{name:'shared-react',setup(b){b.onResolve({filter:/^react(?:\/.*)?$/},args=>({path:import.meta.resolve(args.path),external:true}));}}]});return import(`data:text/javascript;base64,${Buffer.from(r.outputFiles[0].contents).toString('base64')}`);}
-const {runPrinterAutoFix,automaticRepairPlan,knownPrinterProblems,canRepairSupportPermissions,shouldRestartSpooler}=await load('../PrinterAutoFix.ts');
+const {runPrinterAutoFix,automaticRepairPlan,knownPrinterProblems,canRepairSupportPermissions,shouldRestartSpooler}=await load('../../../../packages/agent-rules/printers/PrinterAutoFix.ts');
 const {PrinterDiagnosticsPanel}=await load('../../../pages/PrinterDiagnosticsPanel.tsx');
 const {createPrinterActionClient}=await load('../PrinterActionClient.ts');
 const col=(items=[],error=null)=>({items,error});

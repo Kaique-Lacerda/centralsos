@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { load } from './load.mjs';
 const { ControlBackend, digest } = await load('server/control/ControlBackend.ts');
 const { MemoryRepository } = await load('server/control/Repository.ts');
-const { isOnline, buildTopology, commandRequestSchema, canTransition, backoff, heartbeatSchema, resultSchema } = await load('src/control/contracts.ts');
+const { isOnline, buildTopology, commandRequestSchema, canTransition, backoff, heartbeatSchema, resultSchema } = await load('packages/contracts/control/contracts.ts');
 const env = '5bad9f25-e005-4116-9ce9-384843210581';
 const actor = { id: 'support-subject', name: 'Support', memberships: [{ companyId: 'company', role: 'admin' }] };
 function fixture() {

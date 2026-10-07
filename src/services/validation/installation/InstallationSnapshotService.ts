@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { runtimeEnvironment } from '../../runtime/environment';
-import type { InstallationSnapshot } from '../types';
+import type { InstallationSnapshot } from '../../../../packages/contracts/validation';
 
 export const InstallationSnapshotService = {
   async getSnapshot(): Promise<InstallationSnapshot | null> {

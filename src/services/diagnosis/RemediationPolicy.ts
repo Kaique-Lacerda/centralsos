@@ -1,8 +1,8 @@
 import { isReadOnlyService } from '../support/ServiceSafety';
 import { isOperationalService } from '../support/SupportInterpretation';
-import { isProblemJob } from '../printers/PrinterAutoFix';
-import { isRemotePrinter, isRedirected } from '../printers/PrinterPresence';
-import { needsPhysicalIntervention } from '../printers/PrinterKnownIssues';
+import { isProblemJob } from '../../../packages/agent-rules/printers/PrinterAutoFix';
+import { isRemotePrinter, isRedirected } from '../../../packages/agent-rules/printers/PrinterPresence';
+import { needsPhysicalIntervention } from '../../../packages/agent-rules/printers/PrinterKnownIssues';
 import type { DiagnosisObservations, Incident } from './types';
 
 export function canExecuteRemediation(incident: Incident, data: DiagnosisObservations): boolean {

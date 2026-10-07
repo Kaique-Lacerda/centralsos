@@ -1,5 +1,5 @@
-import type { MachineRole } from '../../types';
-import type { MachineSnapshot } from '../../types/machine';
+import type { MachineRole } from './profile';
+import type { MachineSnapshot } from './machine';
 
 export type ValidationStatus = 'success' | 'warning' | 'error' | 'skipped' | 'ignored';
 export type ValidationSeverity = 'info' | 'warning' | 'error';

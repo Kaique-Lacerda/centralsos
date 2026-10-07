@@ -1,14 +1,14 @@
 import { invoke, Channel } from '@tauri-apps/api/core';
-import type { QueueMonitorEvent } from '../../types/printer-diagnostic';
+import type { QueueMonitorEvent } from '../../../packages/contracts/printer-diagnostic';
 import { MachineSnapshotService } from '../snapshot/MachineSnapshotService';
 import { runtimeEnvironment } from '../runtime/environment';
 import { createPrinterActionClient } from './PrinterActionClient';
 import { createPrinterQueryCoordinator } from './PrinterQueryCoordinator';
-import { runPrinterAutoFix, type PrinterRepairResult } from './PrinterAutoFix';
+import { runPrinterAutoFix, type PrinterRepairResult } from '../../../packages/agent-rules/printers/PrinterAutoFix';
 import type {
   PrintJobSnapshot, SnapshotCollection, PrinterSnapshot, PrinterQueueActionResult,
   PrinterConfigurationSnapshot, PrinterPermissionChangeResult, PrinterPermissionValues,
-} from '../../types/machine';
+} from '../../../packages/contracts/machine';
 
 const actionClient = createPrinterActionClient(runtimeEnvironment, invoke);
 const query=createPrinterQueryCoordinator();

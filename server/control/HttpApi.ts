@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import { ControlBackend, ApiError } from './ControlBackend.js';
 import { PostgresRepository } from './PostgresRepository.js';
 import { ControlAuthentication } from './Authentication.js';
-import { profileSchema } from '../../src/control/contracts.js';
+import { profileSchema } from '../../packages/contracts/control/contracts.js';
 import { limitEnrollment } from './EnrollmentRateLimit.js';
 const pairSchema = z.object({ environmentId: z.uuid(), profile: profileSchema, serverDeviceId: z.uuid().nullable().default(null) }).strict();
 let cached: {

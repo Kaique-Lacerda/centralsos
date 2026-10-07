@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { runtimeEnvironment } from '../runtime/environment';
 import type { RuntimeEnvironment } from '../../types';
-import type { SnapshotCollection } from '../../types/machine';
+import type { SnapshotCollection } from '../../../packages/contracts/machine';
 import type { CleanupResult, ConnectivitySnapshot, FirebirdSnapshot, NetworkAction, NetworkSupportSnapshot, ProcessInfo, ServiceAction, ServiceActionResult, ShareInfo, ShareSnapshot, SoftwareInfo, SupportCheck, SystemSupportSnapshot } from '../../types/support';
 import { canTerminateProcess } from './SupportInterpretation';
 
