@@ -42,7 +42,7 @@ test('dev/local sem chave funcionam; release mantém artifacts e exige públicos
     assert.equal(result.config.plugins.updater, null);
   }
   await assert.rejects(prepareBuildConfiguration(root, 'release', {}), /exige/);
-  const release = await prepareBuildConfiguration(root, 'release', publicFixture(), 'v0.1.0');
+  const release = await prepareBuildConfiguration(root, 'release', publicFixture(), 'v0.2.0');
   assert.equal(release.config.bundle.createUpdaterArtifacts, true);
   assert.equal(release.config.bundle.windows.allowDowngrades, false);
   const migrated = await prepareBuildConfiguration(root, 'local', { STATIC_VCRUNTIME: 'false' });
@@ -51,11 +51,11 @@ test('dev/local sem chave funcionam; release mantém artifacts e exige públicos
   assert.equal(base.bundle.createUpdaterArtifacts, true);
   assert.equal(base.build.windows.staticVCRuntime, true);
 }));
-test('versão 0.1.0 é preservada e versões/tag divergentes são recusadas', () => temporary(async root => {
-  await projectFixture(root); assert.equal((await projectVersion(root, 'v0.1.0')).version, '0.1.0');
-  for (const tag of ['tools-v0.1.0', 'v0.2.0', 'v0.1.0-test']) await assert.rejects(projectVersion(root, tag));
+test('versão 0.2.0 é preservada e versões/tag divergentes são recusadas', () => temporary(async root => {
+  await projectFixture(root); assert.equal((await projectVersion(root, 'v0.2.0')).version, '0.2.0');
+  for (const tag of ['tools-v0.2.0', 'v0.3.0', 'v0.2.0-test']) await assert.rejects(projectVersion(root, tag));
   const pkg = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
-  await writeFile(resolve(root, 'package.json'), JSON.stringify({ ...pkg, version: '0.2.0' }));
+  await writeFile(resolve(root, 'package.json'), JSON.stringify({ ...pkg, version: '0.3.0' }));
   await assert.rejects(projectVersion(root), /divergentes/);
 }));
 const ci = { GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'Kaique-Lacerda/centralsos', GITHUB_SHA: 'a'.repeat(40), GITHUB_TOKEN: 'test-only-not-operational' };
