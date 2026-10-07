@@ -34,6 +34,8 @@ Limites: frames de 256 KiB (prefixo u32 little-endian, verificado antes da aloca
 
 ## Autenticação e segurança
 
+Diagnóstico de ACL por objeto, sem exceções por caminho, e procedimento de integração Windows sem backend: [Session Helper: ACL Windows e teste local pelo SCM](session-helper-windows-test.md).
+
 - Nome do pipe deriva apenas da sessão e hash do **logon SID obtido do token**, evitando reutilização do mesmo endpoint após novo logon. Não há caminho configurável remotamente.
 - Helper cria primeira instância exclusiva, retida entre requests, com `PIPE_REJECT_REMOTE_CLIENTS` e DACL explícita permitindo conexão somente a SYSTEM. Owner é o usuário real do Helper. Não são permitidos Everyone, anônimo ou clientes administrativos comuns.
 - Helper verifica PID/session ID do cliente pelo kernel, token LocalSystem/Session 0, PID do serviço `CentralSOSAgent` em execução no SCM e imagem `central-sos-agent.exe` instalada ao seu lado.
