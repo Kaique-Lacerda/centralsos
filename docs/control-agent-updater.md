@@ -137,17 +137,15 @@ em HKLM podem ser avaliadas pelas regras existentes. Resumo registra cobertura
 PARTIAL_USER_SESSION_REQUIRED; saúde parcial não vira OK completo (warnings).
 Nenhuma regra foi duplicada ou transferida para Rust.
 
-### Session Helper: somente contrato futuro
+### Session Helper: fundação local somente leitura
 
-`src/control/SessionHelperContract.ts`: Agent → IPC local autenticado → helper na
-sessão indicada. Named Pipe por sessão/device, sem TCP; requer PIPE_REJECT_REMOTE_CLIENTS,
-DACL para SYSTEM e SID específico, autenticação mútua do peer, verificação de SID,
-sessionId e identidade do processo pelo Windows, desafio/nonce de uso único,
-expiração, protocolo, commandId e deviceId. SID/sessionId não são escolhidos pelo
-Control. Resposta tem de corresponder integralmente ao pedido e não pode ampliar
-privilégios. Confirmar/autorizar no Agent novamente antes de efeito. Usuário sem
-sessão/helper autenticado → USER_SESSION_REQUIRED. Não armazenar senhas.
-Ainda não existe helper executável, criação de pipe, impersonation nem fallback.
+Implementação e limites atuais: [Session Helper](session-helper.md).
+Agent LocalSystem → Named Pipe local autenticado → executável separado na sessão
+interativa. Contratos Rust/TypeScript aceitam somente session.info,
+session.processes e session.printers. Session 0 nunca é fallback.
+Helper/PID/token/imagem/ACL são verificados pelo Windows, com prazo, expiração,
+nonce e limites. Não há shell, instalação, auto-start ou ações de usuário.
+Operações antigas printer.check/auto_fix ainda não estão habilitadas no Helper.
 
 ## Matriz central de comandos
 

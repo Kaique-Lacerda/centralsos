@@ -93,7 +93,7 @@ impl Command {
             .as_object()
             .ok_or("Payload precisa ser objeto")?;
         let keys: &[&str] = match self.r#type.as_str() {
-            "machine.refresh" | "machine.validate" | "spooler.restart" => &[],
+            "machine.refresh" | "machine.validate" | "spooler.restart" | "session.info" | "session.processes" | "session.printers" => &[],
             "printer.check" | "printer.auto_fix" => &["printerName"],
             "service.check" => &["name"],
             _ => return Err("REJECTED: comando não suportado".into()),

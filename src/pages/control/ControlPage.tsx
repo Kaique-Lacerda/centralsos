@@ -7,7 +7,7 @@ import { getLatestWindowsRelease } from '../../services/releases/GitHubReleaseSe
 import { useSupportConfirmation } from '../support/SupportUI';
 import '../../support-tools.css';
 import '../../control.css';
-const labels: Record<CommandType, string> = { 'machine.refresh': 'Atualizar máquina', 'machine.validate': 'Validar máquina', 'printer.check': 'Verificar impressora', 'printer.auto_fix': 'Verificar e corrigir impressora', 'spooler.restart': 'Reiniciar Spooler', 'service.check': 'Consultar serviços' };
+const labels: Record<CommandType, string> = { 'machine.refresh': 'Atualizar máquina', 'machine.validate': 'Validar máquina', 'printer.check': 'Verificar impressora', 'printer.auto_fix': 'Verificar e corrigir impressora', 'spooler.restart': 'Reiniciar Spooler', 'service.check': 'Consultar serviços', 'session.info': 'Consultar sessão', 'session.processes': 'Processos do usuário', 'session.printers': 'Impressoras do usuário' };
 export function ControlPage() {
     const [devices, setDevices] = useState<Device[]>([]);
     const [environments, setEnvironments] = useState<Environment[]>([]);

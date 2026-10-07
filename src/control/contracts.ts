@@ -16,6 +16,9 @@ const printerName = z.string().trim().min(1).max(220).refine(v => !/[\x00-\x1f]/
 export const commandRequestSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('machine.refresh'), payload: empty, confirmed: z.boolean().default(false) }).strict(),
     z.object({ type: z.literal('machine.validate'), payload: empty, confirmed: z.boolean().default(false) }).strict(),
+    z.object({ type: z.literal('session.info'), payload: empty, confirmed: z.boolean().default(false) }).strict(),
+    z.object({ type: z.literal('session.processes'), payload: empty, confirmed: z.boolean().default(false) }).strict(),
+    z.object({ type: z.literal('session.printers'), payload: empty, confirmed: z.boolean().default(false) }).strict(),
     z.object({ type: z.literal('printer.check'), payload: z.object({ printerName: printerName.optional() }).strict(), confirmed: z.boolean().default(false) }).strict(),
     z.object({ type: z.literal('printer.auto_fix'), payload: z.object({ printerName }).strict(), confirmed: z.boolean() }).strict(),
     z.object({ type: z.literal('spooler.restart'), payload: empty, confirmed: z.boolean() }).strict(),

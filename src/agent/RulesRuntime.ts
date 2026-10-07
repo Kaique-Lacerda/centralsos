@@ -7,7 +7,7 @@ import { commandDefinitions } from '../control/CommandPolicy';
 export const sessionRequired = (operation: string) => ({
     status: 'USER_SESSION_REQUIRED' as const, code: 'USER_SESSION_REQUIRED' as const,
     executionContext: 'USER_SESSION_REQUIRED' as const, operation,
-    message: 'Esta consulta/ação depende da sessão do usuário. Session Helper autenticado não implementado; nenhum diagnóstico de ausência ou correção foi executado.'
+    message: 'Esta consulta/ação depende da sessão do usuário e ainda não está habilitada no Helper; nenhum diagnóstico de ausência ou correção foi executado.'
 });
 /** Agent-only presentation adapter; the interactive MachineSnapshot/validation are unchanged. */
 function machineSnapshot(native: RulesBridge) {
@@ -17,7 +17,7 @@ function machineSnapshot(native: RulesBridge) {
         sessionContext: { currentUser: sessionRequired('currentUser'), printers: sessionRequired('printers'), mappedDrives: sessionRequired('mappedDrives'), hkcu: sessionRequired('hkcu'), winInet: sessionRequired('winInet') }
     };
 }
-export type NativeOperation = 'snapshot' | 'installation' | 'diagnostic' | 'startSpooler' | 'restartSpooler' | 'resume' | 'cancelProblemJob' | 'services' | 'settle';
+export type NativeOperation = 'snapshot' | 'installation' | 'diagnostic' | 'startSpooler' | 'restartSpooler' | 'resume' | 'cancelProblemJob' | 'services' | 'settle' | 'session.info' | 'session.processes' | 'session.printers';
 export type RulesBridge = <T>(operation: NativeOperation, args?: Record<string, unknown>) => T;
 export function createRulesRuntime(native: RulesBridge) {
     const client: AutoFixClient = {
@@ -30,6 +30,10 @@ export function createRulesRuntime(native: RulesBridge) {
         if (!Object.hasOwn(commandDefinitions, type)) throw new Error('REJECTED: comando não suportado');
         const policy = commandDefinitions[type];
         if (!policy || !policy.allowedDeviceProfiles.includes(profile)) throw new Error('REJECTED: comando não suportado');
+        if (type === 'session.info' || type === 'session.processes' || type === 'session.printers') {
+            if (Object.keys(payload).length) throw new Error('SESSION_INVALID_REQUEST');
+            return native(type, {});
+        }
         if (policy.requiresInteractiveUser) return sessionRequired(type);
         switch (type) {
             case 'machine.refresh': return machineSnapshot(native);

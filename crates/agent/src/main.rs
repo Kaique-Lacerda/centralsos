@@ -2,6 +2,7 @@ mod engine;
 mod journal;
 mod logging;
 mod runner;
+mod session;
 #[cfg(windows)]
 mod service;
 fn main() {

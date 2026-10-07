@@ -18,6 +18,7 @@ export interface CommandDefinition {
 export const commandDefinitions = matrix as Record<CommandType, CommandDefinition>;
 export const PROTOCOL_VERSION = 1;
 export const operationContexts = {
+    'session.info': 'USER_SESSION_REQUIRED', 'session.processes': 'USER_SESSION_REQUIRED', 'session.printers': 'USER_SESSION_REQUIRED',
     snapshot: 'USER_SESSION_PREFERRED', installation: 'USER_SESSION_PREFERRED', diagnostic: 'USER_SESSION_REQUIRED',
     startSpooler: 'MACHINE_SYSTEM_SAFE', restartSpooler: 'MACHINE_SYSTEM_SAFE', resume: 'USER_SESSION_REQUIRED',
     cancelProblemJob: 'USER_SESSION_REQUIRED', services: 'MACHINE_SYSTEM_SAFE', settle: 'MACHINE_SYSTEM_SAFE',
