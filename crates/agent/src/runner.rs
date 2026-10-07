@@ -181,7 +181,7 @@ pub fn run(stop: Receiver<()>, shutdown: Arc<AtomicBool>) -> Result<(), String> 
                         match crate::engine::execute(&c, &link.enrollment.profile, shutdown.clone(), server_expiry)
                         {
                             Ok(details) => {
-                                let needs_session = details["code"].as_str() == Some("USER_SESSION_REQUIRED");
+                                let needs_session = details["code"].as_str() == Some("USER_SESSION_REQUIRED") || details["status"].as_str() == Some("REJECTED");
                                 let problem = needs_session || details
                                     .get("status")
                                     .and_then(|v| v.as_str())

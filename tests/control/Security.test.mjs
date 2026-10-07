@@ -57,7 +57,7 @@ test('pareamento fica vinculado à empresa original, não a ambiente reassociado
     assert.equal(f.repo.state.pairing[0].usedAt, null);
 });
 test('matriz completa: confirmação, contexto e whitelist não vêm do payload', () => {
-    assert.equal(Object.keys(commandDefinitions).length, 6);
+    assert.equal(Object.keys(commandDefinitions).length, 9);
     for (const policy of Object.values(commandDefinitions)) {
         assert.ok(policy.executionContext); assert.ok(policy.auditCategory); assert.ok(policy.timeout > 0);
         assert.deepEqual(policy.allowedDeviceProfiles, ['TERMINAL', 'SERVER']);

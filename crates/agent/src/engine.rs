@@ -19,9 +19,14 @@ fn native(operation: &str, args: serde_json::Value) -> Result<serde_json::Value,
     if std::time::Instant::now() >= deadline { return Err("TIMEOUT: nenhuma nova operação será iniciada; efeitos em andamento exigem conferência manual".into()); }
     if chrono::DateTime::parse_from_rfc3339(&c.expires_at).map_err(|_| "Expiração inválida")? <= chrono::Utc::now() { return Err("EXPIRED_DURING_EXECUTION: efeito não será repetido".into()); }
     let policy = central_sos_link::policy::command_policy(&c.r#type).ok_or("REJECTED")?;
-    if policy.requires_interactive_user { return Err("USER_SESSION_REQUIRED".into()); }
     if !policy.native_operations.iter().any(|v| v == operation) {
         return Err("Operação não permitida para este comando".into());
+    }
+    if policy.requires_interactive_user {
+        if operation == c.r#type && central_sos_link::session::Operation::from_name(operation).is_ok() {
+            return Ok(crate::session::execute(&c, server_expiry.saturating_duration_since(std::time::Instant::now()).min(deadline.saturating_duration_since(std::time::Instant::now()))));
+        }
+        return Err("USER_SESSION_REQUIRED".into());
     }
     let name = || -> Result<String, String> {
         let n = args
@@ -117,6 +122,14 @@ pub fn execute(
     let policy = central_sos_link::policy::command_policy(&c.r#type).ok_or("REJECTED")?;
     let profile_name = match profile { Profile::SERVER => "SERVER", Profile::TERMINAL => "TERMINAL" };
     if !policy.allowed_device_profiles.iter().any(|v| v == profile_name) { return Err("REJECTED: perfil não permitido".into()); }
+    if c.r#type.starts_with("session.") {
+        if shutdown.load(std::sync::atomic::Ordering::SeqCst) || std::time::Instant::now() >= server_expiry {
+            return Err("EXPIRED_DURING_EXECUTION: sessão não será consultada".into());
+        }
+        let result = crate::session::execute(c, server_expiry.saturating_duration_since(std::time::Instant::now()).min(std::time::Duration::from_secs(policy.timeout)));
+        if std::time::Instant::now() >= server_expiry { return Err("EXPIRED_DURING_EXECUTION: resposta de sessão expirou".into()); }
+        return Ok(result);
+    }
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(policy.timeout);
     ACTIVE.with(|a| *a.borrow_mut() = Some((c.clone(), shutdown, deadline, server_expiry)));
     struct Reset;
