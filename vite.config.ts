@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { loadToolsManifestFromRelease, ToolsManifestProxyError } from './server/ToolsManifestProxy';
 import { createAppUpdateHandler } from './api/app-update';
+import { getProductBuild } from './config/products';
 
 const appUpdateDevRoute: Plugin = {
   name: 'app-update-dev-route',
@@ -56,7 +57,18 @@ const toolsManifestDevRoute: Plugin = {
   }
 };
 
-export default defineConfig({ plugins: [react(), toolsManifestDevRoute, appUpdateDevRoute], clearScreen: false, server: {
-  strictPort: true, port: 1420,
-  proxy: { '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
-} });
+export default defineConfig(({ mode }) => {
+  const product = getProductBuild(mode);
+  const entrypoint: Plugin = {
+    name: 'product-entrypoint',
+    transformIndexHtml: { order: 'pre', handler: html => html.replace('/src/main.tsx', product.entry) }
+  };
+  return {
+    plugins: [entrypoint, react(), toolsManifestDevRoute, appUpdateDevRoute], clearScreen: false,
+    build: { outDir: product.outDir },
+    server: {
+      strictPort: true, port: product.port,
+      proxy: { '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
+    }
+  };
+});

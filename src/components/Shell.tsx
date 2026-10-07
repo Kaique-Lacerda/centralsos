@@ -1,6 +1,1 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { Activity } from 'lucide-react';
-import { visibleNavigationItems } from '../app/navigation';
-import { desktopOnlyMessage, runtimeEnvironment } from '../services/runtime/environment';
-import {ControlIndicator} from '../pages/control/DesktopControlSettings';
-export function Shell(){return <div className="shell"><aside className="sidebar"><div className="brand"><div className="brand-mark"><Activity size={19}/></div><div><strong>CENTRAL SOS</strong><small>Suporte técnico</small></div></div><div className="nav-caption">ESPAÇO DE TRABALHO</div><nav>{visibleNavigationItems.map(({path:to,label,icon:Icon})=><NavLink key={to} to={to} end={to==='/'} className={({isActive})=>`nav-link ${isActive?'active':''}`}><Icon size={17}/>{label}</NavLink>)}</nav><div className="sidebar-bottom"><i className="online-dot"/> Ambiente {runtimeEnvironment}<span className="version">v0.1.0</span><ControlIndicator/></div></aside><main className="main"><header className="topbar">Central de operações<span>Ambiente {runtimeEnvironment}</span></header>{runtimeEnvironment==='web'&&<div className="notice" style={{ margin: '1rem 1.5rem 0', padding: '0.75rem 1rem', borderRadius: 8, background: '#fff3cd', color: '#5b3b00', border: '1px solid #f0d37d' }}>{desktopOnlyMessage}</div>}<div className="page"><Outlet/></div></main></div>}
+export { ClientShell as Shell } from '../apps/client/ClientShell';

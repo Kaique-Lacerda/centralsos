@@ -1,17 +1,19 @@
 # CENTRAL SOS
 
-Aplicação interna para suporte técnico, pensada como aplicativo desktop Windows (.exe) e não como serviço público acessível pela web. O ambiente browser existe apenas como prévia de desenvolvimento e visualização da interface; a coleta de dados do sistema local só é permitida no runtime desktop.
+O repositório reúne três frontends independentes: CENTRAL SOS Cliente (Desktop Windows existente), CENTRAL SOS Suporte (prévia Web do Control) e Web público (portal de distribuição). A coleta de dados e as ferramentas locais Windows continuam somente no Cliente Desktop.
 
 ## Arquitetura
 
-React + TypeScript renderiza a interface. Os serviços TypeScript intermediam o runtime e chamam somente comandos Tauri nomeados. Tauri 2 (Rust) implementa comandos permitidos explicitamente; não há executor genérico de shell. `MachineEnvironment` é guardado no `localStorage` do dispositivo. Não há backend, banco de dados ou autenticação real.
+React + TypeScript renderiza cada produto a partir de seu próprio entrypoint/router/shell. Serviços locais chamam comandos Tauri nomeados; não há executor genérico de shell. `MachineEnvironment` permanece no `localStorage` do Cliente. Backend/API, contracts e regras compartilhadas permanecem separados da UI pública. Veja [Entrypoints e ownership dos produtos](docs/product-entrypoints.md), incluindo o bloqueio atual da autenticação nativa do Suporte.
 
 ## Stack e ambientes
 
 - React, TypeScript, Vite, React Router
 - Tailwind CSS e Lucide React
 - Tauri 2, Rust, `sysinfo` e WMI tipado (`wmi`, somente Windows)
-- Browser/dev: apenas visualização da interface e navegação sem acesso aos dados locais.
+- Web público: distribuição do Cliente e ferramentas homologadas; Suporte aparece em desenvolvimento.
+- Suporte: prévia Web independente do Control, usando o transporte/auth browser same-origin existente.
+- Cliente no browser: prévia sem acesso aos dados locais.
 - Desktop: coleta real de sistema, discos, rede, impressoras e validações locais em Windows. A resposta preserva erros parciais por seção.
 
 ## Executar
@@ -20,9 +22,13 @@ Requer Node.js/npm. Para o Desktop Windows, instale também Rust (MSVC), depend�
 
 ```sh
 npm install
-npm run dev
+npm run dev:client
+npm run dev:support
+npm run dev:web
 npm run typecheck
-npm run build
+npm run build:client
+npm run build:support
+npm run build:web
 npm run tauri:dev
 npm run tauri:build
 ```
@@ -50,13 +56,14 @@ git commit -m "Descreve a alteração"
 git push -u origin feature/nome-da-alteracao
 ```
 
-Use `npm run dev` para desenvolvimento Web, `npm run tauri:dev` para Desktop Windows e `npm run build` para validar o build Web. Não adicione arquivos `.env` ou credenciais ao Git; use `.env.example` apenas com nomes de variáveis e valores fictícios/não secretos.
+Use `npm run dev:web` para o portal, `npm run dev:support` para a prévia do Control e `npm run tauri:dev` para Desktop Cliente. `npm run dev` continua como alias da prévia Cliente; `npm run build` é o portal público (`dist/web`). Tauri usa explicitamente `build:client` (`dist/client`). Não adicione arquivos `.env` ou credenciais ao Git; use `.env.example` apenas com nomes de variáveis e valores fictícios/não secretos.
 
 ## Estrutura
 
 ```text
-src/app/                 Rotas e gates por runtime
-src/components/          Shell e navegação
+src/apps/{client,support,web}/ Entrypoints, shells, routers e código específico de produto
+src/app/                 Reexports de compatibilidade do Cliente
+src/components/          UI genérica e distribuição compartilhada
 src/pages/               Dashboard e páginas iniciais
 src/tools/               Registry central de ferramentas
 src/services/runtime/    Runtime e configuração local
@@ -92,7 +99,7 @@ para o inventário e os limites desta separação.
 ## Adicionar uma ferramenta
 
 1. Registre id, descrição, categoria, rota, ambientes e estado `enabled` em `src/tools/registry.ts`.
-2. Crie a página e registre sua rota em `src/app/App.tsx`.
+2. Crie a página e registre sua rota em `src/apps/client/ClientRouter.tsx`.
 3. Para ferramentas exclusivas do Desktop, valide runtime no gate e trate a rota Web com uma mensagem explicativa.
 4. Implemente acesso local em serviço específico; nunca aceite nome de comando vindo de entrada arbitrária do usuário.
 

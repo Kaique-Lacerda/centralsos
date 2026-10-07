@@ -4,10 +4,10 @@
   "version": "0.2.0",
   "identifier": "br.com.centralsos.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:client",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist",
+    "beforeBuildCommand": "npm run build:client",
+    "frontendDist": "../dist/client",
     "windows": { "staticVCRuntime": true }
   },
   "app": {

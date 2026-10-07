@@ -19,17 +19,7 @@ export function useSupportTask<T>() {
   };
   return { result, busy, error, message, run, setResult, setMessage };
 }
-export function useSupportConfirmation() {
-  const [request, setRequest] = useState<{ text: string; finish: (confirmed: boolean) => void } | null>(null);
-  const pending = useRef<((confirmed: boolean) => void) | null>(null);
-  useEffect(() => () => { pending.current?.(false); }, []);
-  const confirm = (text: string) => new Promise<boolean>(resolve => {
-    pending.current?.(false); pending.current = resolve;
-    setRequest({ text, finish: value => { pending.current = null; setRequest(null); resolve(value); } });
-  });
-  const dialog = request && <div className="support-modal-backdrop"><section className="support-modal" role="dialog" aria-modal="true" aria-labelledby="support-confirm-title"><h2 id="support-confirm-title">Confirmar alteração</h2><p>{request.text}</p><div className="support-actions"><button className="linkbtn" onClick={() => request.finish(false)} autoFocus>Cancelar</button><button className="primary" onClick={() => request.finish(true)}>Confirmar</button></div></section></div>;
-  return { confirm, dialog };
-}
+export { useConfirmation as useSupportConfirmation } from '../../components/confirmation/useConfirmation';
 export function SupportHeader({ title, description, icon: Icon, busy, action, actionLabel = 'Consultar' }: { title: string; description: string; icon: LucideIcon; busy: boolean; action?: () => void; actionLabel?: string }) {
   return <><header className="support-heading"><div><small>FERRAMENTAS</small><h1><Icon size={23}/>{title}</h1><p>{description}</p></div>{action && <button className="primary" disabled={busy || runtimeEnvironment !== 'desktop'} onClick={action}><RefreshCw size={14}/>{busy ? 'Consultando…' : actionLabel}</button>}</header>{runtimeEnvironment !== 'desktop' && <p className="notice">Esta ferramenta requer o aplicativo Desktop. Nenhum dado local é simulado no navegador.</p>}</>;
 }

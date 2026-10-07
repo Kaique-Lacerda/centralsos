@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AgentLinkService, type AgentLinkStatus } from '../../services/control/AgentLinkService';
 import { UpdaterService } from '../../services/updater/UpdaterService';
 import { runtimeEnvironment } from '../../services/runtime/environment';
-import { useSupportConfirmation } from '../support/SupportUI';
+import { useSupportConfirmation } from '../../pages/support/SupportUI';
 export function ControlIndicator() { const [status, setStatus] = useState<AgentLinkStatus | null>(null); useEffect(() => { if (runtimeEnvironment !== 'desktop')
     return; let live = true; const refresh = () => AgentLinkService.status().then(s => { if (live)
     setStatus(s); }).catch(() => { if (live)
