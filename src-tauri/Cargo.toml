@@ -1,6 +1,6 @@
 [package]
 name = "central-sos"
-version = "0.1.0"
+version = "0.2.0"
 description = "CENTRAL SOS Desktop"
 authors = ["CENTRAL SOS"]
 edition = "2021"
