@@ -55,3 +55,24 @@ test('transport source enforces local-only ACL, identity, SQOS, framing and dead
     assert.match(main, /não aceita argumentos/); assert.match(collector, /EnumPrintersW/);
     assert.doesNotMatch(transport + main + collector, /TcpListener|Command::new|powershell\.exe|cmd\.exe|CreateProcess/);
 });
+
+test('image trust pins checked handles and checks file, installation and ancestors without path bypass', async () => {
+    const security = await readFile('crates/link/src/session/windows/image_security.rs', 'utf8');
+    assert.match(security, /GetSecurityInfo\(\s*handle\.0/);
+    assert.match(security, /MapGenericMask/);
+    assert.match(security, /INHERIT_ONLY_ACE/);
+    assert.match(security, /FILE_DELETE_CHILD/);
+    assert.match(security, /FILE_FLAG_OPEN_REPARSE_POINT/);
+    assert.match(security, /nNumberOfLinks != 1/);
+    assert.match(security, /path\.ancestors\(\)/);
+    assert.doesNotMatch(security, /SetNamedSecurityInfo|SetSecurityInfo|\|\s*FILE_SHARE_DELETE/);
+});
+
+test('local integration harness is separate and exposes only one fixed read-only session.info request', async () => {
+    const harness = await readFile('crates/agent/examples/session-info-service.rs', 'utf8');
+    assert.match(harness, /Operation::Info\(EmptyPayload/);
+    assert.match(harness, /service_dispatcher::start\("CentralSOSAgent"/);
+    assert.match(harness, /windows::exchange/);
+    assert.match(harness, /create_new\(true\)/);
+    assert.doesNotMatch(harness, /Operation::from_name|Operation::Processes|Operation::Printers|TcpListener|Command::new|CreateProcess|vault::|credential/);
+});

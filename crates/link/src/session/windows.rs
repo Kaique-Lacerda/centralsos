@@ -14,6 +14,10 @@ use windows_sys::Win32::{
     System::{Pipes::*, RemoteDesktop::*, Services::*, Threading::*, IO::*},
 };
 
+mod image_security;
+pub use image_security::trusted_image;
+use image_security::TrustedImage;
+
 pub struct Handle(pub HANDLE);
 impl Handle {
     fn checked(handle: HANDLE, code: ErrorCode) -> Result<Self> {
@@ -285,107 +289,6 @@ fn trusted_sid(sid: &str) -> bool {
     ]
     .contains(&sid)
 }
-// Read-only check, never repairs ACLs. No mutable config or remote-supplied image path.
-pub fn trusted_image(path: &Path) -> Result<()> {
-    use std::os::windows::fs::MetadataExt;
-    for target in path.ancestors() {
-        let meta = std::fs::symlink_metadata(target).map_err(|_| {
-            error(
-                ErrorCode::SessionPeerRejected,
-                "Imagem/diretório não verificável",
-            )
-        })?;
-        if meta.file_attributes() & 0x400 != 0 {
-            return Err(error(
-                ErrorCode::SessionPeerRejected,
-                "Imagem contém reparse point",
-            ));
-        }
-        let object = wide(&target.to_string_lossy());
-        unsafe {
-            let (mut owner, mut acl, mut sd) = (null_mut(), null_mut(), null_mut());
-            let rc = GetNamedSecurityInfoW(
-                object.as_ptr(),
-                SE_FILE_OBJECT,
-                OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
-                &mut owner,
-                null_mut(),
-                &mut acl,
-                null_mut(),
-                &mut sd,
-            );
-            if rc != 0 {
-                return Err(error(
-                    ErrorCode::SessionPeerRejected,
-                    "ACL da imagem indisponível",
-                ));
-            }
-            struct Descriptor(*mut c_void);
-            impl Drop for Descriptor {
-                fn drop(&mut self) {
-                    unsafe {
-                        LocalFree(self.0);
-                    }
-                }
-            }
-            let _descriptor = Descriptor(sd);
-            if !trusted_sid(&sid_text(owner)?) || acl.is_null() {
-                return Err(error(ErrorCode::SessionPeerRejected, "Imagem precisa de owner SYSTEM/Administradores/TrustedInstaller e DACL restrita"));
-            }
-            let mut stats: ACL_SIZE_INFORMATION = zeroed();
-            if GetAclInformation(
-                acl,
-                (&mut stats as *mut ACL_SIZE_INFORMATION).cast(),
-                size_of::<ACL_SIZE_INFORMATION>() as u32,
-                AclSizeInformation,
-            ) == 0
-            {
-                return Err(error(
-                    ErrorCode::SessionPeerRejected,
-                    "DACL não verificável",
-                ));
-            }
-            for index in 0..stats.AceCount {
-                let mut ace = null_mut();
-                if GetAce(acl, index, &mut ace) == 0 {
-                    return Err(error(ErrorCode::SessionPeerRejected, "ACE não verificável"));
-                }
-                let header = &*ace.cast::<ACE_HEADER>();
-                if header.AceFlags & INHERIT_ONLY_ACE as u8 != 0 || header.AceType == 1 {
-                    continue;
-                }
-                if header.AceType != 0 {
-                    return Err(error(
-                        ErrorCode::SessionPeerRejected,
-                        "Tipo de ACE não suportado para imagem confiável",
-                    ));
-                }
-                let allowed = &*ace.cast::<ACCESS_ALLOWED_ACE>();
-                let writer = sid_text((&allowed.SidStart as *const u32).cast_mut().cast())?;
-                let mutation = if meta.is_dir() {
-                    0x10000000 | 0x40000000 | 0x00010000 | 0x00040000 | 0x00080000 | 0x40 | 0x100
-                } else {
-                    0x10000000
-                        | 0x40000000
-                        | 0x00010000
-                        | 0x00040000
-                        | 0x00080000
-                        | 0x2
-                        | 0x4
-                        | 0x10
-                        | 0x100
-                };
-                if allowed.Mask & mutation != 0 && !trusted_sid(&writer) {
-                    return Err(error(
-                        ErrorCode::SessionPeerRejected,
-                        "Imagem/diretório modificável por usuário não confiável",
-                    ));
-                }
-            }
-        }
-    }
-    Ok(())
-}
 fn image_path(process: HANDLE) -> Result<PathBuf> {
     unsafe {
         let mut path = vec![0u16; 32768];
@@ -414,7 +317,7 @@ fn expected_sibling(name: &str) -> Result<PathBuf> {
         })?
         .join(name))
 }
-fn check_image(process: HANDLE, expected: &Path) -> Result<()> {
+fn check_image(process: HANDLE, expected: &Path) -> Result<TrustedImage> {
     let actual = image_path(process)?;
     if !actual
         .to_string_lossy()
@@ -464,7 +367,11 @@ fn agent_pid() -> Result<u32> {
         Ok(status.dwProcessId)
     }
 }
-fn authenticate_agent(pipe: HANDLE) -> Result<Handle> {
+struct AuthenticatedPeer {
+    _process: Handle,
+    _image: TrustedImage,
+}
+fn authenticate_agent(pipe: HANDLE) -> Result<AuthenticatedPeer> {
     unsafe {
         let (mut pid, mut session) = (0, 0);
         if GetNamedPipeClientProcessId(pipe, &mut pid) == 0
@@ -484,11 +391,14 @@ fn authenticate_agent(pipe: HANDLE) -> Result<Handle> {
                 "Agent precisa de LocalSystem/Session 0",
             ));
         }
-        check_image(process.0, &expected_sibling("central-sos-agent.exe")?)?;
-        Ok(process)
+        let image = check_image(process.0, &expected_sibling("central-sos-agent.exe")?)?;
+        Ok(AuthenticatedPeer {
+            _process: process,
+            _image: image,
+        })
     }
 }
-fn authenticate_helper(pipe: HANDLE, expected: &Identity) -> Result<Handle> {
+fn authenticate_helper(pipe: HANDLE, expected: &Identity) -> Result<AuthenticatedPeer> {
     unsafe {
         let (mut pid, mut session) = (0, 0);
         if GetNamedPipeServerProcessId(pipe, &mut pid) == 0
@@ -507,11 +417,14 @@ fn authenticate_helper(pipe: HANDLE, expected: &Identity) -> Result<Handle> {
                 "Token do Helper divergente",
             ));
         }
-        check_image(
+        let image = check_image(
             process.0,
             &expected_sibling("central-sos-session-helper.exe")?,
         )?;
-        Ok(process)
+        Ok(AuthenticatedPeer {
+            _process: process,
+            _image: image,
+        })
     }
 }
 
@@ -662,7 +575,7 @@ pub fn serve(mut executor: impl FnMut(&Operation, &Identity) -> Result<Data>) ->
             "Helper exige token do usuário interativo; SYSTEM recusado",
         ));
     }
-    trusted_image(
+    let _installed_image = trusted_image(
         &std::env::current_exe()
             .map_err(|_| error(ErrorCode::SessionPeerRejected, "Imagem Helper indisponível"))?,
     )?;
@@ -814,7 +727,7 @@ pub fn serve(mut executor: impl FnMut(&Operation, &Identity) -> Result<Data>) ->
             })();
             // Never log user inventories/SIDs/credentials. Invalid unauthenticated frames are closed.
             if let Err(e) = transaction {
-                eprintln!("Session Helper IPC: {:?}", e.code);
+                eprintln!("Session Helper IPC: {e}");
             }
             DisconnectNamedPipe(pipe.0);
             if retire {
@@ -829,6 +742,18 @@ pub fn serve(mut executor: impl FnMut(&Operation, &Identity) -> Result<Data>) ->
 #[cfg(test)]
 mod transport_tests {
     use super::*;
+    #[test]
+    fn rejects_agent_and_helper_images_other_than_the_expected_siblings() {
+        for name in ["central-sos-agent.exe", "central-sos-session-helper.exe"] {
+            let expected = expected_sibling(name).unwrap();
+            let failure = check_image(unsafe { GetCurrentProcess() }, &expected).unwrap_err();
+            assert_eq!(failure.code, ErrorCode::SessionPeerRejected);
+            assert_eq!(
+                failure.message,
+                "Imagem da contraparte não é o binário instalado esperado"
+            );
+        }
+    }
     #[test]
     fn real_windows_pipe_framing_timeout_and_fake_helper_rejection() {
         let name = wide(&format!(
