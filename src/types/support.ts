@@ -1,4 +1,4 @@
-import type { NetworkAdapterSnapshot, SnapshotCollection, VolumeSnapshot, WindowsServiceSnapshot } from './machine';
+import type { NetworkAdapterSnapshot, SnapshotCollection, VolumeSnapshot, WindowsServiceSnapshot } from '../../packages/contracts/machine';
 
 export interface SupportCheck { state: 'success' | 'warning' | 'error' | 'unknown' | 'timeout'; message: string; code: number | null; latencyMs: number | null }
 export interface Listener { address: string; port: number; pid: number; processName: string | null }

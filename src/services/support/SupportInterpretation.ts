@@ -1,4 +1,4 @@
-import type { WindowsServiceSnapshot } from '../../types/machine';
+import type { WindowsServiceSnapshot } from '../../../packages/contracts/machine';
 import type { FirebirdSnapshot, ProcessInfo, SoftwareInfo, SystemSupportSnapshot } from '../../types/support';
 export function isOperationalService(service: WindowsServiceSnapshot): boolean {
   const name = service.name?.toLowerCase() ?? ''; const path = service.pathName?.toLowerCase() ?? '';

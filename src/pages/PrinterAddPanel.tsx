@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { PrinterService } from '../services/printers/PrinterService';
 import { validatePrinterUnc, type DiscoveredPrinter } from '../services/printers/PrinterConnections';
-import type { SnapshotCollection } from '../types/machine';
+import type { SnapshotCollection } from '../../packages/contracts/machine';
 
 export function PrinterAddPanel({close,refresh,notify}:{close:()=>void;refresh:()=>Promise<void>;notify:(message:string)=>void}) {
   const [path,setPath]=useState('');const [searching,setSearching]=useState(false);const [adding,setAdding]=useState('');

@@ -1,4 +1,4 @@
-import type { PrinterDiagnosticSnapshot } from '../../types/printer-diagnostic';
+import type { PrinterDiagnosticSnapshot } from '../../contracts/printer-diagnostic';
 import { diagnosePort } from './PrinterHealth';
 import { isRedirected, isRemotePrinter } from './PrinterPresence';
 

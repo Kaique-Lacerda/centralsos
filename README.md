@@ -63,11 +63,13 @@ src/services/runtime/    Runtime e configuração local
 src/services/system/     Diagnóstico e regras de validação
 src/services/snapshot/   Entrada tipada para o snapshot da máquina
 src/services/{network,printers,storage}/  Projeções do snapshot
-src/services/validation/ Motor, registry, regras por domínio e resumo
+src/services/validation/ Coleta e orquestração local de validação
 src/services/{processes,windows}/  Reservas de serviços
 src/services/support/    Abstração mock claramente identificada
 src/services/logs/       Logger leve para console
-src/types/               Tipos compartilhados
+src/types/               Tipos exclusivos do frontend e reexport do perfil
+packages/contracts/      Contratos/policy comuns ao Agent, Backend e frontend
+packages/agent-rules/    Motor, registry e regras puras incorporadas no Agent
 src-tauri/src/commands/  Comandos Rust expostos ao frontend
 crates/core/src/models/  Contratos Rust serializados como MachineSnapshot
 crates/core/src/services/ Coleta e operações Windows independentes do Tauri
@@ -82,8 +84,10 @@ Tauri. O Desktop reexporta seus modelos e serviços para preservar os commands
 existentes; Agent continua consumindo o mesmo crate. A feature `desktop` do Core
 é mantida como opção vazia de compatibilidade com comandos de teste existentes.
 Os testes do serializer IPC e o monitor `tauri::ipc::Channel` ficam no Desktop.
-O build de regras TypeScript do Agent permanece na organização atual; sua
-extração para módulos neutros será uma etapa separada.
+O build de regras TypeScript do Agent usa somente `packages/contracts` e
+`packages/agent-rules`, sem fontes do frontend. Consulte
+[Contratos e regras compartilhados](docs/shared-control-agent-contracts.md)
+para o inventário e os limites desta separação.
 
 ## Adicionar uma ferramenta
 
@@ -98,7 +102,7 @@ Implemente uma função Rust específica em `src-tauri/src/commands/`, registre 
 
 ## Adicionar validação
 
-Adicione uma regra com id, título, categoria, perfis aplicáveis e `validate(snapshot)` em `src/services/validation/rules/`. Registre-a em `ValidationRegistry.ts`. `ValidationEngine` executa regras independentes, converte exceções isoladas em erro e calcula o resumo; componentes React apenas solicitam a execução e exibem os resultados. Use status `success`, `warning`, `error` ou `skipped`, severidade `info`, `warning` ou `error`, e inclua `expected`, `actual` e `suggestedAction` quando fizer sentido.
+Adicione uma regra com id, título, categoria, perfis aplicáveis e `validate(snapshot)` em `packages/agent-rules/validation/rules/`. Registre-a em `ValidationRegistry.ts`. `ValidationEngine` executa regras independentes, converte exceções isoladas em erro e calcula o resumo; componentes React apenas solicitam a execução e exibem os resultados. Use status `success`, `warning`, `error` ou `skipped`, severidade `info`, `warning` ou `error`, e inclua `expected`, `actual` e `suggestedAction` quando fizer sentido.
 
 ## Estado desta fundação
 

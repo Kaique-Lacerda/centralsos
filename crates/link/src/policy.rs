@@ -16,7 +16,7 @@ pub struct CommandPolicy {
 }
 pub fn command_policy(name: &str) -> Option<&'static CommandPolicy> {
     static MATRIX: OnceLock<BTreeMap<String, CommandPolicy>> = OnceLock::new();
-    MATRIX.get_or_init(|| serde_json::from_str(include_str!("../../../src/control/command-policy.json")).expect("invalid build-time command matrix")).get(name)
+    MATRIX.get_or_init(|| serde_json::from_str(include_str!("../../../packages/contracts/control/command-policy.json")).expect("invalid build-time command matrix")).get(name)
 }
 #[cfg(test)]
 mod tests {

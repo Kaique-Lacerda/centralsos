@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { load } from './load.mjs';
-const { decodeSessionRequest, sessionHelperResponseSchema, sessionOperations, SESSION_MAX_MESSAGE_BYTES } = await load('src/control/SessionHelperContract.ts');
-const { createRulesRuntime } = await load('src/agent/RulesRuntime.ts');
-const { commandRequestSchema, commandDefinitions } = await load('src/control/contracts.ts');
+const { decodeSessionRequest, sessionHelperResponseSchema, sessionOperations, SESSION_MAX_MESSAGE_BYTES } = await load('packages/contracts/control/SessionHelperContract.ts');
+const { createRulesRuntime } = await load('packages/agent-rules/RulesRuntime.ts');
+const { commandRequestSchema, commandDefinitions } = await load('packages/contracts/control/contracts.ts');
 const session = { sessionId: 1, userSid: 'S-1-5-21-1', logonSid: 'S-1-5-5-1-1' };
 const fixture = operation => ({ requestId: '0f897ee6-663d-47e1-8a93-72928a0734b1', protocolVersion: 1, timestamp: 1000, expiresAt: 10000, nonce: 'abbdf679-a3b3-4fc3-a221-993d0ad2cfb4', session, operation, payload: {} });
 test('IPC rejects unknown operation, invalid payload, expiry, version, size and extra fields', () => {

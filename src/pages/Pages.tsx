@@ -4,12 +4,12 @@ import { Activity, ArrowRight, Box, Check, CircleAlert, Download, Monitor, Print
 import { LocalConfigService } from '../services/runtime/localConfig';
 import { runtimeEnvironment } from '../services/runtime/environment';
 import { getComputerNetworkSummaryAdapters } from '../services/network/ComputerNetworkSummary';
-import { groupValidationResults } from '../services/validation/ValidationRegistry';
+import { groupValidationResults } from '../../packages/agent-rules/validation/ValidationRegistry';
 import { runMachineValidation } from '../services/validation/runMachineValidation';
 import { toolRegistry } from '../tools/registry';
 import { getLatestWindowsRelease, type WindowsReleaseLookup } from '../services/releases/GitHubReleaseService';
 import type { MachineEnvironment, MachineRole } from '../types';
-import type { MachineValidationRun, ValidationCategory, ValidationStatus } from '../services/validation/types';
+import type { MachineValidationRun, ValidationCategory, ValidationStatus } from '../../packages/contracts/validation';
 import { InstallationsPage as InstallationsCatalogPage } from './InstallationsPage';
 import { ComputerDiagnosticPage } from './ComputerDiagnosticPage';
 import { GeneralDiagnosisPanel } from './GeneralDiagnosisPanel';

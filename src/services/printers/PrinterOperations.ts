@@ -1,5 +1,5 @@
-import type { PrintJobSnapshot } from '../../types/machine';
-import type { PrinterQueueActionResult } from '../../types/machine';
+import type { PrintJobSnapshot } from '../../../packages/contracts/machine';
+import type { PrinterQueueActionResult } from '../../../packages/contracts/machine';
 import type { RuntimeEnvironment } from '../../types';
 
 export function getPrinterActionAvailability(environment: RuntimeEnvironment): { available: boolean; message: string | null } {

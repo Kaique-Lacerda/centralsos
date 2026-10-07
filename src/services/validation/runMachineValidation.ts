@@ -1,9 +1,9 @@
 import { LocalConfigService } from '../runtime/localConfig';
 import { MachineSnapshotService } from '../snapshot/MachineSnapshotService';
 import { InstallationSnapshotService } from './installation/InstallationSnapshotService';
-import { ValidationEngine } from './ValidationEngine';
-import type { MachineValidationRun } from './types';
-import type { MachineSnapshot } from '../../types/machine';
+import { ValidationEngine } from '../../../packages/agent-rules/validation/ValidationEngine';
+import type { MachineValidationRun } from '../../../packages/contracts/validation';
+import type { MachineSnapshot } from '../../../packages/contracts/machine';
 
 export async function runMachineValidation(existingSnapshot?: MachineSnapshot): Promise<MachineValidationRun> {
   const environment = LocalConfigService.load();

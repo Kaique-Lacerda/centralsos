@@ -1,4 +1,4 @@
-import type { WindowsServiceSnapshot } from '../../types/machine';
+import type { WindowsServiceSnapshot } from '../../../packages/contracts/machine';
 
 // Mirrors the existing native deny-list. Native policy remains authoritative.
 export const criticalWindowsServices = new Set([

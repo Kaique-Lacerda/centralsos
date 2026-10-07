@@ -1,4 +1,4 @@
-import type { InstallationSnapshot } from '../validation/types';
+import type { InstallationSnapshot } from '../../../packages/contracts/validation';
 import type { CatalogTool } from './GitHubToolsService';
 
 export type ToolInstallationState = 'not-installed' | 'installed' | 'update-available' | 'unavailable' | 'error';

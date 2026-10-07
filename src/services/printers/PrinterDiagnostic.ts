@@ -1,4 +1,4 @@
-import type { PrinterSnapshot, SnapshotCollection } from '../../types/machine';
+import type { PrinterSnapshot, SnapshotCollection } from '../../../packages/contracts/machine';
 
 export type PrinterKind = 'Local' | 'Compartilhada' | 'Remota' | 'Virtual' | 'Não determinado';
 export type PrinterConnection = 'USB' | 'COM' | 'TCP-IP' | 'Rede' | 'Compartilhada' | 'Local' | 'Wi-Fi' | 'Não identificado';

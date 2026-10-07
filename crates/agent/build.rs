@@ -1,11 +1,8 @@
 fn main() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     for source in [
-        "src/agent",
-        "src/control",
-        "src/services/printers",
-        "src/services/validation",
-        "src/types",
+        "packages/contracts",
+        "packages/agent-rules",
         "scripts/build-agent-rules.mjs",
     ] {
         println!("cargo:rerun-if-changed={}", root.join(source).display());

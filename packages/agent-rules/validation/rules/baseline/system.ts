@@ -1,5 +1,5 @@
-import type { MachineRole } from '../../../../types';
-import type { ValidationContext, ValidationResult, ValidationRule } from '../../types';
+import type { MachineRole } from '../../../../contracts/profile';
+import type { ValidationContext, ValidationResult, ValidationRule } from '../../../../contracts/validation';
 
 const bothProfiles: readonly MachineRole[] = ['terminal', 'server'];
 

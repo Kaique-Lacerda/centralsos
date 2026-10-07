@@ -1,5 +1,5 @@
-import type { MachineRole } from '../../types';
-import type { ValidationContext, OverallValidationStatus, ValidationResult, ValidationRule, ValidationSummary } from './types';
+import type { MachineRole } from '../../contracts/profile';
+import type { ValidationContext, OverallValidationStatus, ValidationResult, ValidationRule, ValidationSummary } from '../../contracts/validation';
 import { ValidationRegistry } from './ValidationRegistry';
 
 function overallStatus(summary: Omit<ValidationSummary, 'overallStatus'>): OverallValidationStatus {

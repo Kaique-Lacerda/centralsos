@@ -6,7 +6,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 async function load(entry){const r=await build({entryPoints:[fileURLToPath(new URL(entry,import.meta.url))],bundle:true,platform:'node',format:'esm',write:false,jsx:'automatic',loader:{'.css':'empty'},plugins:[{name:'shared-ui-dependencies',setup(b){b.onResolve({filter:/^(?:react(?:\/.*)?|lucide-react)$/},args=>({path:import.meta.resolve(args.path),external:true}));}}]});return import(`data:text/javascript;base64,${Buffer.from(r.outputFiles[0].contents).toString('base64')}`);}
 const {presentPrinter,summarizePrinterPresentation}=await load('../PrinterPresentation.ts');
-const {isVirtualPrinter,printerPresence}=await load('../PrinterPresence.ts');
+const {isVirtualPrinter,printerPresence}=await load('../../../../packages/agent-rules/printers/PrinterPresence.ts');
 const {PrinterCardSummary}=await load('../../../pages/PrinterDiagnosticPage.tsx');
 const {PrinterDiagnosticsPanel}=await load('../../../pages/PrinterDiagnosticsPanel.tsx');
 const col=(items=[],error=null)=>({items,error});

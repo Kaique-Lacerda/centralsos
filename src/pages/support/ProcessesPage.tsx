@@ -3,7 +3,7 @@ import { Cpu } from 'lucide-react';
 import { SupportService } from '../../services/support/SupportService';
 import { knownProcessNames, processGroups } from '../../services/support/SupportInterpretation';
 import type { ProcessInfo } from '../../types/support';
-import type { SnapshotCollection } from '../../types/machine';
+import type { SnapshotCollection } from '../../../packages/contracts/machine';
 import { SupportHeader, SupportFeedback, TechnicalDetails, useSupportTask, useSupportConfirmation, formatBytes } from './SupportUI';
 export function ProcessesPage() {
   const task = useSupportTask<SnapshotCollection<ProcessInfo>>(); const [query, setQuery] = useState(''); const [all, setAll] = useState(false); const { confirm, dialog } = useSupportConfirmation();

@@ -1,11 +1,11 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { PrinterDiagnosticSnapshot } from '../types/printer-diagnostic';
+import type { PrinterDiagnosticSnapshot } from '../../packages/contracts/printer-diagnostic';
 import { PrinterService } from '../services/printers/PrinterService';
-import { diagnosePort,diagnosePrinter,healthLabels,spoolerLabel,spoolerStartLabel,comId } from '../services/printers/PrinterHealth';
+import { diagnosePort,diagnosePrinter,healthLabels,spoolerLabel,spoolerStartLabel,comId } from '../../packages/agent-rules/printers/PrinterHealth';
 import { canConfirmSpoolerAction,diagnosticRecord } from '../services/printers/PrinterCorrections';
-import { type PrinterRepairResult } from '../services/printers/PrinterAutoFix';
+import { type PrinterRepairResult } from '../../packages/agent-rules/printers/PrinterAutoFix';
 import { presentPrinter } from '../services/printers/PrinterPresentation';
-import { collectPrinterKnownIssues } from '../services/printers/PrinterKnownIssues';
+import { collectPrinterKnownIssues } from '../../packages/agent-rules/printers/PrinterKnownIssues';
 
 export function PrinterDiagnosticsPanel({name,snapshot,busy,refresh,changed,details,actions,onRepairBusy,remoteHint=false}:{
   name:string;snapshot:PrinterDiagnosticSnapshot|null;busy:boolean;refresh:()=>Promise<void>;

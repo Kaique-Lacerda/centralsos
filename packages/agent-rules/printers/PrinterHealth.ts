@@ -1,5 +1,5 @@
-import type { PrinterDiagnosticSnapshot, PrinterNativeState, SpoolerState } from '../../types/printer-diagnostic';
-import type { PrintJobSnapshot } from '../../types/machine';
+import type { PrinterDiagnosticSnapshot, PrinterNativeState, SpoolerState } from '../../contracts/printer-diagnostic';
+import type { PrintJobSnapshot } from '../../contracts/machine';
 import { comId, diagnosticConnection, isRemotePrinter, isRedirected, printerPresence } from './PrinterPresence';
 export { comId } from './PrinterPresence';
 

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { runtimeEnvironment } from '../runtime/environment';
-import type { SnapshotCollection, WindowsServiceSnapshot } from '../../types/machine';
+import type { SnapshotCollection, WindowsServiceSnapshot } from '../../../packages/contracts/machine';
 
 export const WindowsServicesService = {
   getServices(): Promise<SnapshotCollection<WindowsServiceSnapshot>> {

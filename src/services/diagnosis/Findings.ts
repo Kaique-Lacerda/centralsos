@@ -3,9 +3,9 @@ import { collectNetworkIssues } from '../support/NetworkKnownIssues';
 import { isOperationalService } from '../support/SupportInterpretation';
 import { isReadOnlyService } from '../support/ServiceSafety';
 import { volumeKind } from '../system/VolumePresentation';
-import { collectPrinterKnownIssues, needsPhysicalIntervention } from '../printers/PrinterKnownIssues';
-import { isProblemJob } from '../printers/PrinterAutoFix';
-import { isRedirected, isRemotePrinter, printerPresence } from '../printers/PrinterPresence';
+import { collectPrinterKnownIssues, needsPhysicalIntervention } from '../../../packages/agent-rules/printers/PrinterKnownIssues';
+import { isProblemJob } from '../../../packages/agent-rules/printers/PrinterAutoFix';
+import { isRedirected, isRemotePrinter, printerPresence } from '../../../packages/agent-rules/printers/PrinterPresence';
 import { diagnosisAreas, type ActionId, type AreaResult, type Confidence, type DiagnosisArea, type DiagnosisObservations, type Finding, type Remediation, type Severity } from './types';
 
 const routes: Record<DiagnosisArea, string> = {

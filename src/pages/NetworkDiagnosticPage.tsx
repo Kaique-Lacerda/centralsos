@@ -6,7 +6,7 @@ import type { NetworkSupportSnapshot } from '../types/support';
 import { NetworkOperationsPanel } from './support/NetworkOperationsPanel';
 import '../support-tools.css';
 import { classifyNetworkAdapter, networkAdministrativeState, networkConnectionState, partialNetworkNotice, splitNetworkAdapters, summarizeNetwork } from '../services/network/NetworkDiagnostic';
-import type { NetworkAdapterSnapshot, SnapshotCollection } from '../types/machine';
+import type { NetworkAdapterSnapshot, SnapshotCollection } from '../../packages/contracts/machine';
 import '../network-diagnostic.css';
 
 const stateLabels = { connected: 'Conectado', disconnected: 'Desconectado', connecting: 'Conectando', unknown: 'Não conclusivo' } as const;

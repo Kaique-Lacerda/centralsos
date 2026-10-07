@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { load } from './load.mjs';
-const { createRulesRuntime } = await load('src/agent/RulesRuntime.ts');
-const { ValidationRegistry } = await load('src/services/validation/ValidationRegistry.ts');
+const { createRulesRuntime } = await load('packages/agent-rules/RulesRuntime.ts');
+const { ValidationRegistry } = await load('packages/agent-rules/validation/ValidationRegistry.ts');
 const collection = (items = []) => ({ items, error: null });
 const snapshot = () => ({ capturedAt: 0, system: { hostname: 'TEST', username: 'fixture', operatingSystem: 'Windows', windowsVersion: '10', architecture: 'x64', error: null }, storage: collection([{ unit: 'C:', totalBytes: 100, freeBytes: 50, usedBytes: 50 }]), network: collection([{ name: 'Ethernet', status: 'Conectado', ipv4: [], ipv6: [], gateways: [], dnsServers: [] }]), printers: collection([{ name: 'Fixture' }]) });
 test('refresh reutiliza snapshot e service.check consulta sem mutadores', async () => {
