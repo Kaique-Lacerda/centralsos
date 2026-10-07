@@ -27,7 +27,7 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-O bundle Windows está configurado para NSIS e MSI. A configuração `src-tauri/tauri.conf.json` usa o nome de produto CENTRAL SOS. A distribuição e URL de release não foram configuradas.
+O build local Windows está configurado para NSIS e MSI. A publicação oficial usa NSIS x64 assinado e exige configuração externa real do updater. Consulte [Releases e atualização do Desktop](docs/releases-updater.md) para os comandos, GitHub Actions, chaves e `/api/app-update`.
 
 ## Colaboração com Git
 
