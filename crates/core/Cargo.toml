@@ -2,13 +2,11 @@
 name = "central-sos-core"
 version = "0.1.0"
 edition = "2021"
-[lib]
-path = "../../src-tauri/src/core.rs"
 [features]
-desktop = ["dep:tauri"]
+# Compatibility flag for existing build/test callers; Core is independent of Tauri.
+desktop = []
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 sysinfo = "0.33"
-tauri = { version = "2", optional = true }
 [target.'cfg(windows)'.dependencies]
 wmi = "0.18.4"

@@ -1,26 +1,4 @@
-#[cfg(windows)]
-pub mod installation;
-pub mod snapshot;
-pub mod agent_metadata;
-#[cfg(windows)]
-pub mod support;
-pub mod printer_operations;
-pub mod printer_management;
-pub mod printer_connections;
-pub mod printer_diagnostics;
-pub mod printer_spooler;
-#[cfg(feature = "desktop")]
+// Preserve command imports while keeping Desktop integrations out of Core.
+pub use central_sos_core::services::*;
 pub mod printer_queue_monitor;
-#[cfg(feature = "desktop")]
 pub mod windows_admin;
-
-#[cfg(windows)]
-mod network;
-#[cfg(windows)]
-mod printers;
-#[cfg(windows)]
-mod storage;
-#[cfg(windows)]
-mod system;
-#[cfg(windows)]
-pub mod windows_services;
