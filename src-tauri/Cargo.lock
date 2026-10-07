@@ -299,6 +299,7 @@ dependencies = [
  "base64 0.22.1",
  "central-sos-core",
  "central-sos-link",
+ "minisign-verify",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

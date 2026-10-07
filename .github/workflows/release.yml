@@ -1,0 +1,128 @@
+name: Publicar CENTRAL SOS Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag nova, já versionada no main: vMAJOR.MINOR.PATCH'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: central-sos-desktop-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      CENTRAL_SOS_UPDATER_PUBLIC_KEY: ${{ vars.CENTRAL_SOS_UPDATER_PUBLIC_KEY }}
+      CENTRAL_SOS_UPDATER_URL: ${{ vars.CENTRAL_SOS_UPDATER_URL }}
+    steps:
+      - name: Exigir publicação a partir de main
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Selecione main ao executar esta workflow.' }
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Conferir versão, origem e configuração pública
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run release:prepare -- --tag "$env:RELEASE_TAG" --ci
+
+      - name: Validar TypeScript, testes e Web
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($task in @('typecheck', 'test:validation', 'test:tools', 'test:control', 'test:release', 'build')) {
+            npm run $task
+            if ($LASTEXITCODE -ne 0) { throw "Falhou: $task" }
+          }
+
+      - name: Validar Desktop, Core, Link e Agent
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($manifest in @('src-tauri/Cargo.toml', 'crates/core/Cargo.toml', 'crates/link/Cargo.toml', 'crates/agent/Cargo.toml')) {
+            cargo check --locked --manifest-path $manifest
+            if ($LASTEXITCODE -ne 0) { throw "Cargo check falhou: $manifest" }
+          }
+          cargo test --locked --manifest-path crates/core/Cargo.toml --features desktop --lib
+          if ($LASTEXITCODE -ne 0) { throw 'Testes Core falharam' }
+          cargo test --locked --manifest-path crates/link/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Testes Link falharam' }
+          cargo test --locked --manifest-path crates/agent/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Testes Agent falharam' }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --example verify-update
+          if ($LASTEXITCODE -ne 0) { throw 'Testes do verificador de assinatura falharam' }
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { throw 'Git diff check falhou' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'A validação alterou arquivos versionados' }
+
+      - name: Exigir chave de assinatura
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Configure TAURI_SIGNING_PRIVATE_KEY nos GitHub Actions Secrets.' }
+
+      - name: Build assinado e upload em draft
+        uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4 # v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: .
+          tauriScript: npx --no-install tauri
+          args: --config .release-build/tauri.release.conf.json --bundles nsis --target x86_64-pc-windows-msvc
+          tagName: ${{ inputs.tag }}
+          releaseName: CENTRAL SOS ${{ inputs.tag }}
+          releaseCommitish: ${{ github.sha }}
+          releaseDraft: true
+          prerelease: false
+          uploadPlainBinary: false
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+
+      - name: Verificar assinatura criptográfica e versão do instalador
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File)
+          if ($installers.Count -ne 1) { throw 'Era esperado exatamente um instalador NSIS.' }
+          $installer = $installers[0].FullName
+          $signature = "$installer.sig"
+          if (!(Test-Path -LiteralPath $signature)) { throw 'Assinatura NSIS ausente.' }
+          $version = $env:RELEASE_TAG.Substring(1)
+          cargo run --locked --manifest-path src-tauri/Cargo.toml --example verify-update -- "$installer" "$signature" '.release-build/tauri.release.conf.json' "$version"
+          if ($LASTEXITCODE -ne 0) { throw 'Assinatura ou versão do instalador inválida; a Release continuará draft.' }
+
+      - name: Verificar assets, latest.json e assinaturas antes de publicar
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release-publish.mjs

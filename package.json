@@ -7,8 +7,11 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:dev": "node scripts/tauri-build.mjs dev",
+    "tauri:build": "node scripts/tauri-build.mjs local",
+    "release:prepare": "node scripts/release-config.mjs",
+    "release:build": "node scripts/tauri-build.mjs release",
+    "test:release": "node --test tests/release/*.test.mjs",
     "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs src/services/releases/tests/*.test.mjs src/services/windows/tests/*.test.mjs src/services/windows-services/tests/*.test.mjs src/services/support/tests/*.test.mjs src/pages/tests/*.test.mjs",
     "test:tools": "node --test src/services/tools/tests/*.test.mjs",
     "test:control": "node --test tests/control/*.test.mjs",
@@ -26,7 +29,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.8.4",
+    "@tauri-apps/cli": "2.12.1",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
     "@types/react": "^18.3.12",

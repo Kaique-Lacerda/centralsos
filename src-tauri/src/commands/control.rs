@@ -34,8 +34,8 @@ pub async fn agent_unlink(confirmed: bool) -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-pub fn updater_configuration() -> serde_json::Value {
-    serde_json::json!({"configured":super::super::updater_config().is_some(),"policy":"MANUAL"})
+pub fn updater_configuration(app: tauri::AppHandle) -> serde_json::Value {
+    serde_json::json!({"configured":super::super::updater_config(app.config()).is_some(),"policy":"MANUAL"})
 }
 #[tauri::command]
 pub fn restart_after_update(app: tauri::AppHandle) {

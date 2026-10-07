@@ -1,20 +1,27 @@
 mod commands;
 pub use central_sos_core::{models, services};
-fn updater_config()->Option<serde_json::Value>{
+fn updater_config(config: &tauri::Config)->Option<serde_json::Value>{
     use base64::Engine;
-    let key=option_env!("CENTRAL_SOS_UPDATER_PUBLIC_KEY")?.trim();let endpoint=option_env!("CENTRAL_SOS_UPDATER_URL")?.trim();
+    let updater = config.plugins.0.get("updater")?;
+    let key=updater.get("pubkey")?.as_str()?.trim();
+    let endpoints=updater.get("endpoints")?.as_array()?;
+    if endpoints.len()!=1 { return None; }
+    let endpoint=endpoints[0].as_str()?.trim();
     let decoded=base64::engine::general_purpose::STANDARD.decode(key).ok()?;let text=String::from_utf8(decoded).ok()?;
-    if !text.starts_with("untrusted comment:")||!text.lines().nth(1).is_some_and(|s|s.starts_with("RW")){return None;}
+    if !text.starts_with("untrusted comment:"){return None;}
     let raw_key=base64::engine::general_purpose::STANDARD.decode(text.lines().nth(1)?).ok()?;
     if raw_key.len()!=42 || ![b"Ed".as_slice(),b"ED".as_slice()].contains(&&raw_key[..2]) {return None;}
-    let url=reqwest::Url::parse(endpoint).ok()?;if url.scheme()!="https"||url.host_str().is_none()||url.password().is_some()||!url.username().is_empty()||endpoint.contains("/releases/latest/")||endpoint.contains("tools-v"){return None;}
-    Some(serde_json::json!({"pubkey":key,"endpoints":[endpoint],"windows":{"installMode":"passive"}}))
+    let url=reqwest::Url::parse(endpoint).ok()?;if url.scheme()!="https"||url.host_str().is_none()||url.password().is_some()||!url.username().is_empty()||url.path()!="/api/app-update"||url.query().is_some()||url.fragment().is_some(){return None;}
+    for flag in ["dangerousInsecureTransportProtocol", "dangerousAcceptInvalidCerts", "dangerousAcceptInvalidHostnames", "allowDowngrades"] {
+        if updater.get(flag).is_some_and(|v| v.as_bool()!=Some(false)) { return None; }
+    }
+    if updater.get("requireSignedVersion").and_then(|v|v.as_bool())!=Some(true) { return None; }
+    Some(updater.clone())
 }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut context=tauri::generate_context!();
-    let config=updater_config();
-    if let Some(config)=config.as_ref(){context.config_mut().plugins.0.insert("updater".into(),config.clone());}
+    let context=tauri::generate_context!();
+    let config=updater_config(context.config());
     tauri::Builder::default()
         .setup(move|app|{if config.is_some(){app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;}Ok(())})
         .invoke_handler(tauri::generate_handler![
