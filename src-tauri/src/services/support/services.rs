@@ -42,6 +42,7 @@ pub fn policy(
     }
     if [
         "rpcss",
+        "rpceptmapper",
         "dcomlaunch",
         "eventlog",
         "winmgmt",
@@ -199,5 +200,39 @@ mod tests {
         v.name = Some("RpcSs".into());
         assert!(policy(&v, "stop", true).is_err());
         assert!(validate_name("x\";cmd").is_err())
+    }
+    #[test]
+    fn structural_services_deny_every_mutation() {
+        for name in [
+            "RpcSs",
+            "RpcEptMapper",
+            "DcomLaunch",
+            "EventLog",
+            "LSM",
+            "SamSs",
+            "Winmgmt",
+            "BFE",
+            "MpsSvc",
+            "WinDefend",
+        ] {
+            for action in ["start", "stop", "restart"] {
+                let mut service = s();
+                service.name = Some(name.into());
+                service.state = Some(
+                    if action == "start" {
+                        "Stopped"
+                    } else {
+                        "Running"
+                    }
+                    .into(),
+                );
+                for confirmed in [false, true] {
+                    assert!(
+                        policy(&service, action, confirmed).is_err(),
+                        "{name}: {action}"
+                    );
+                }
+            }
+        }
     }
 }

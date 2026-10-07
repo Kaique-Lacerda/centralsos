@@ -5,7 +5,7 @@ import { SupportService } from '../services/support/SupportService';
 import type { NetworkSupportSnapshot } from '../types/support';
 import { NetworkOperationsPanel } from './support/NetworkOperationsPanel';
 import '../support-tools.css';
-import { classifyNetworkAdapter, networkConnectionState, partialNetworkNotice, splitNetworkAdapters, summarizeNetwork } from '../services/network/NetworkDiagnostic';
+import { classifyNetworkAdapter, networkAdministrativeState, networkConnectionState, partialNetworkNotice, splitNetworkAdapters, summarizeNetwork } from '../services/network/NetworkDiagnostic';
 import type { NetworkAdapterSnapshot, SnapshotCollection } from '../types/machine';
 import '../network-diagnostic.css';
 
@@ -44,6 +44,8 @@ function NetworkAdapterCard({ adapter, isPrimary }: { adapter: NetworkAdapterSna
     <details className="network-secondary-details">
       <summary>Detalhes de rede</summary>
       <dl className="network-adapter-details secondary">
+        <div><dt>Estado administrativo</dt><dd>{({enabled:'Habilitado',disabled:'Desabilitado',unknown:'Não determinado'})[networkAdministrativeState(adapter)]}</dd></div>
+        <div><dt>Estado de mídia/conexão</dt><dd>{adapter.status || 'Não determinado'}</dd></div>
         <div><dt>MAC</dt><dd>{adapter.mac||'Não disponível'}</dd></div>
         <div><dt>IPv6</dt><dd>{valueOrUnavailable(ipv6Values(adapter.ipv6))}</dd></div>
         <div><dt>Gateways IPv6</dt><dd>{valueOrUnavailable(ipv6Values(adapter.gateways))}</dd></div>

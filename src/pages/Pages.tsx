@@ -12,6 +12,8 @@ import type { MachineEnvironment, MachineRole } from '../types';
 import type { MachineValidationRun, ValidationCategory, ValidationStatus } from '../services/validation/types';
 import { InstallationsPage as InstallationsCatalogPage } from './InstallationsPage';
 import { ComputerDiagnosticPage } from './ComputerDiagnosticPage';
+import { GeneralDiagnosisPanel } from './GeneralDiagnosisPanel';
+import { GeneralDiagnosisService } from '../services/diagnosis/GeneralDiagnosisService';
 import '../snapshot.css';
 import '../release-download.css';
 import { Cpu, Database, FolderOpen, Puzzle, Radio } from 'lucide-react';
@@ -36,7 +38,13 @@ export function Dashboard(){
 export function ToolsPage(){const icons:Record<string,typeof Activity>={'computer-diagnostic':Monitor,'printer-diagnostic':Printer,'network-diagnostic':Wifi,'connectivity':Radio,'windows-services-diagnostic':Settings2,'firebird':Database,'shares':FolderOpen,'system-support':Settings2,'processes':Cpu,'dependencies':Puzzle};return <><Heading tag="CAIXA DE SUPORTE" title="Ferramentas" description="Investigue e resolva problemas atuais da máquina."/><div className="tools-catalog">{toolRegistry.filter(t=>t.enabled).map(t=>{const Icon=icons[t.id]??Activity;return <Link className="tool" key={t.id} to={t.path}><Icon/><div><b>{t.name}</b><small>{t.description}</small><span>{t.availableOn.includes(runtimeEnvironment)?'Disponível':'Exige Desktop'}</span></div><ArrowRight/></Link>})}</div></>}
 export function DiagnosticPage(){return <ComputerDiagnosticPage getNetworkSummary={getComputerNetworkSummaryAdapters}/>}
 export function ValidationPage(){
-  const [validation,setValidation]=useState<MachineValidationRun|null>(null);
+  const [tab,setTab]=useState<'diagnosis'|'compliance'>('diagnosis');
+  const [baseline,setBaseline]=useState(GeneralDiagnosisService.observations.compliance);
+  return <><Heading tag="ESTADO DA MÁQUINA" title="Validação" description="Diagnóstico operacional e Conformidade SOS são verificações independentes."/><div className="validation-tabs" role="tablist" aria-label="Tipo de verificação"><button className="linkbtn" id="diagnosis-tab" role="tab" aria-controls="diagnosis-panel" aria-selected={tab==='diagnosis'} onClick={()=>setTab('diagnosis')}>Diagnóstico</button><button className="linkbtn" id="compliance-tab" role="tab" aria-controls="compliance-panel" aria-selected={tab==='compliance'} onClick={()=>setTab('compliance')}>Conformidade</button></div><div role="tabpanel" id="diagnosis-panel" aria-labelledby="diagnosis-tab" hidden={tab!=='diagnosis'}><GeneralDiagnosisPanel onCompliance={()=>setTab('compliance')} onComplete={()=>setBaseline(GeneralDiagnosisService.observations.compliance)}/></div><div role="tabpanel" id="compliance-panel" aria-labelledby="compliance-tab" hidden={tab!=='compliance'}><CompliancePanel existingValidation={baseline}/></div></>;
+}
+function CompliancePanel({existingValidation}:{existingValidation:MachineValidationRun|null}){
+  const [validation,setValidation]=useState<MachineValidationRun|null>(existingValidation);
+  useEffect(()=>{setValidation(existingValidation)},[existingValidation]);
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
   const run=async()=>{setBusy(true);setError('');try{setValidation(await runMachineValidation())}catch(e){setValidation(null);setError(e instanceof Error?e.message:'Falha ao executar a validação.')}finally{setBusy(false)}};

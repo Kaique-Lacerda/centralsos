@@ -31,6 +31,8 @@ pub struct MachineSystemSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct VolumeSnapshot {
+    #[serde(default)]
+    pub drive_type: Option<u32>,
     pub unit: String,
     pub label: Option<String>,
     pub total_bytes: Option<u64>,
