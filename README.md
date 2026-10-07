@@ -69,10 +69,21 @@ src/services/support/    Abstração mock claramente identificada
 src/services/logs/       Logger leve para console
 src/types/               Tipos compartilhados
 src-tauri/src/commands/  Comandos Rust expostos ao frontend
-src-tauri/src/models/    Contratos Rust serializados como MachineSnapshot
-src-tauri/src/services/  Coleta WMI específica por área
+crates/core/src/models/  Contratos Rust serializados como MachineSnapshot
+crates/core/src/services/ Coleta e operações Windows independentes do Tauri
+src-tauri/src/services/  Integrações Desktop: Channel da fila e ferramentas administrativas
 src-tauri/capabilities/  Permissões Tauri mínimas
 ```
+
+## Core Rust e adapters Desktop
+
+O `central-sos-core` possui fontes próprias em `crates/core/src` e não depende do
+Tauri. O Desktop reexporta seus modelos e serviços para preservar os commands
+existentes; Agent continua consumindo o mesmo crate. A feature `desktop` do Core
+é mantida como opção vazia de compatibilidade com comandos de teste existentes.
+Os testes do serializer IPC e o monitor `tauri::ipc::Channel` ficam no Desktop.
+O build de regras TypeScript do Agent permanece na organização atual; sua
+extração para módulos neutros será uma etapa separada.
 
 ## Adicionar uma ferramenta
 

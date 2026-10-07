@@ -84,7 +84,7 @@ test('heartbeat recusa inventários e sua coleta nativa é leve', async () => {
     assert.equal(heartbeatSchema.safeParse(f.beat(d)).success, true);
     for (const field of ['snapshot', 'printers', 'services', 'processes', 'storage', 'payload', 'command'])
         assert.equal(heartbeatSchema.safeParse({ ...f.beat(d), [field]: [] }).success, false);
-    const metadata = await readFile('src-tauri/src/services/agent_metadata.rs', 'utf8');
+    const metadata = await readFile('crates/core/src/services/agent_metadata.rs', 'utf8');
     assert.doesNotMatch(metadata, /collect_machine_snapshot|Win32_Printer|Win32_Process|Win32_Service|Win32_LogicalDisk/);
 });
 test('Agent não expõe executor/TCP/eval de payload; configuração não contém credencial assumida', async () => {

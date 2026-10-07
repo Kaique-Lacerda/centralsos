@@ -13,7 +13,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 sysinfo = "0.33"
-central-sos-core = { path = "../crates/core", features = ["desktop"] }
+central-sos-core = { path = "../crates/core" }
 central-sos-link = { path = "../crates/link" }
 tauri-plugin-updater = "2"
 serde_json = "1"

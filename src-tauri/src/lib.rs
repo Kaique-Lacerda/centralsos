@@ -1,5 +1,8 @@
 mod commands;
-pub use central_sos_core::{models, services};
+pub use central_sos_core::models;
+pub mod services;
+#[cfg(test)]
+mod printer_diagnostic_tests;
 fn updater_config(config: &tauri::Config)->Option<serde_json::Value>{
     use base64::Engine;
     let updater = config.plugins.0.get("updater")?;

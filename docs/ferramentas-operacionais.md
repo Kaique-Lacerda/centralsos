@@ -99,17 +99,17 @@ Criados:
 - src/pages/support/ProcessesPage.tsx
 - src/pages/support/DependenciesPage.tsx
 - src-tauri/src/commands/support.rs
-- src-tauri/src/models/support.rs
-- src-tauri/src/services/support/mod.rs
-- src-tauri/src/services/support/connectivity.rs
-- src-tauri/src/services/support/network.rs
-- src-tauri/src/services/support/services.rs
-- src-tauri/src/services/support/firebird.rs
-- src-tauri/src/services/support/shares.rs
-- src-tauri/src/services/support/system.rs
-- src-tauri/src/services/support/processes.rs
-- src-tauri/src/services/support/dependencies.rs
-- src-tauri/src/services/support/windows.rs
+- crates/core/src/models/support.rs
+- crates/core/src/services/support/mod.rs
+- crates/core/src/services/support/connectivity.rs
+- crates/core/src/services/support/network.rs
+- crates/core/src/services/support/services.rs
+- crates/core/src/services/support/firebird.rs
+- crates/core/src/services/support/shares.rs
+- crates/core/src/services/support/system.rs
+- crates/core/src/services/support/processes.rs
+- crates/core/src/services/support/dependencies.rs
+- crates/core/src/services/support/windows.rs
 - docs/ferramentas-operacionais.md
 
 Alterados para integração:
@@ -126,11 +126,11 @@ Alterados para integração:
 - src-tauri/src/commands/mod.rs
 - src-tauri/src/commands/windows_services.rs
 - src-tauri/src/lib.rs
-- src-tauri/src/models/mod.rs
-- src-tauri/src/models/machine.rs
-- src-tauri/src/services/mod.rs
-- src-tauri/src/services/network.rs
-- src-tauri/src/services/installation.rs (somente visibilidade de dois helpers PE existentes)
+- crates/core/src/models/mod.rs
+- crates/core/src/models/machine.rs
+- crates/core/src/services/mod.rs
+- crates/core/src/services/network.rs
+- crates/core/src/services/installation.rs (somente visibilidade de dois helpers PE existentes)
 
 Os arquivos de navegação ocultada anteriormente permanecem locais e preservados. Implementação de Impressoras, coletor de Impressoras, catálogo/downloads de Tools e regras da Validação não foram reescritos.
 
