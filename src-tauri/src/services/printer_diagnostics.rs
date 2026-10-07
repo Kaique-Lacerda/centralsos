@@ -111,7 +111,7 @@ mod platform {
 #[cfg(not(windows))] pub fn enumerate_ports(_: Option<&str>) -> Result<Vec<PrintPort>, String> { Err("Exige Desktop Windows.".into()) }
 #[cfg(not(windows))] pub fn probe(_: String) -> Result<TcpPrintProbe, String> { Err("Exige Desktop Windows.".into()) }
 
-#[cfg(all(test,windows))]
+#[cfg(all(test,windows,feature = "desktop"))]
 mod tests {
     use super::*;
     #[test]

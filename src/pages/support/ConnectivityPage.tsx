@@ -1,0 +1,13 @@
+import { useState } from 'react';
+import { Radio } from 'lucide-react';
+import { runtimeEnvironment } from '../../services/runtime/environment';
+import { SupportService } from '../../services/support/SupportService';
+import type { ConnectivitySnapshot } from '../../types/support';
+import { CheckRow, SupportHeader, SupportFeedback, TechnicalDetails, useSupportTask } from './SupportUI';
+
+export function ConnectivityResult({ result }: { result: ConnectivitySnapshot }) { return <section className="support-card"><h2>{result.host}{result.port ? ` · TCP ${result.port}` : ''}</h2><CheckRow label="DNS" check={result.dns}/><CheckRow label="Ping" check={result.ping}/>{result.port && <CheckRow label={`TCP ${result.port}`} check={result.tcp}/>}<p>{result.addresses.join(' · ')}</p>{result.port && result.listeners.length > 0 && <p>Processos ouvindo nesta porta local: {result.listeners.map(l => `${l.processName ?? 'Não identificado'} (PID ${l.pid}, ${l.address})`).join('; ')}</p>}{result.port && result.host === '127.0.0.1' && result.listeners.length === 0 && !result.listenerError && result.tcp.state !== 'success' && <p>Nenhum listener IPv4 retornado para esta porta. Isso não comprova bloqueio por Firewall.</p>}<TechnicalDetails data={result}/></section>; }
+export function ConnectivityPage() {
+  const [host, setHost] = useState(''); const [port, setPort] = useState(''); const task = useSupportTask<ConnectivitySnapshot>();
+  const test = () => task.run(() => SupportService.connectivity(host, port.trim() ? Number(port) : null));
+  return <><SupportHeader title="Conectividade" description="Teste um destino por DNS, ICMP e TCP, sem depender de shell." icon={Radio} busy={task.busy}/><form className="support-form" onSubmit={e => { e.preventDefault(); void test(); }}><label>Host/IP<input required value={host} onChange={e => setHost(e.target.value)} placeholder="192.168.1.10 ou SERVIDOR"/></label><label>Porta opcional<input type="number" min={1} max={65535} value={port} onChange={e => setPort(e.target.value)} placeholder="3050"/></label><button className="primary" disabled={task.busy || runtimeEnvironment !== 'desktop'}>{task.busy ? 'Testando…' : 'Testar'}</button></form><div className="support-presets">{[['Firebird',3050],['SMB',445],['RDP',3389],['HTTP',80],['HTTPS',443]].map(([label,value]) => <button key={label} disabled={task.busy} onClick={() => setPort(String(value))}>{label} · {value}</button>)}</div><p className="notice">Sem resposta a ping não prova falha de conectividade. Para destinos locais, consulte listeners e regras de Firewall nos detalhes; nenhum Firewall será desativado.</p><SupportFeedback {...task}/>{task.result && <ConnectivityResult result={task.result}/>}</>;
+}

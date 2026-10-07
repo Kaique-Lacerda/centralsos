@@ -118,7 +118,7 @@ export function ComputerDiagnosticPage({ getNetworkSummary }: { getNetworkSummar
   const printSummary = !snapshot ? 'Aguardando coleta' : hasPrinterProblem ? 'Problema' : hasPrinterAttention ? 'Atenção' : 'OK';
 
   return <>
-    <header className="computer-diagnostic-heading"><div><small>FERRAMENTA · SISTEMA</small><h1>Diagnóstico do Computador</h1><p>Central de consulta local. A coleta começa somente quando você solicita.</p></div><button className="primary" disabled={busy || runtimeEnvironment !== 'desktop'} onClick={() => void collectSnapshot()}>{busy ? 'Coletando…' : snapshot ? 'Atualizar snapshot' : 'Coletar snapshot'}</button></header>
+    <header className="computer-diagnostic-heading"><div><small>FERRAMENTAS</small><h1>Computador</h1><p>Central de consulta local. A coleta começa somente quando você solicita.</p></div><button className="primary" disabled={busy || runtimeEnvironment !== 'desktop'} onClick={() => void collectSnapshot()}>{busy ? 'Coletando…' : snapshot ? 'Atualizar snapshot' : 'Coletar snapshot'}</button></header>
     <div className="panel row computer-collection-note"><div><b>Coleta explícita e somente leitura</b><p>Sistema, armazenamento, rede e impressoras. Serviços e validação são consultados separadamente, sob solicitação.</p></div></div>
     {runtimeEnvironment === 'web' && <p className="notice"><Monitor/> A coleta local e as ferramentas administrativas exigem o aplicativo Desktop.</p>}
     {error && <p className="error"><CircleAlert/>{error}</p>}

@@ -41,6 +41,10 @@ pub struct VolumeSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkAdapterSnapshot {
+    pub index: Option<u32>,
+    pub interface_index: Option<u32>,
+    pub net_enabled: Option<bool>,
+    pub dhcp_enabled: Option<bool>,
     pub name: String,
     pub status: Option<String>,
     pub mac: Option<String>,

@@ -31,6 +31,10 @@ export interface VolumeSnapshot {
 }
 
 export interface NetworkAdapterSnapshot {
+  index?: number | null;
+  interfaceIndex?: number | null;
+  netEnabled?: boolean | null;
+  dhcpEnabled?: boolean | null;
   name: string;
   status: string | null;
   mac: string | null;

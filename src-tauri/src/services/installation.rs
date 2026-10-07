@@ -13,6 +13,13 @@ const TROIA_DIR: &str = r"C:\SoS Soluções\Troia";
 const PROCEDURE_DLL_FILE_NAME: Option<&str> = None;
 
 pub fn collect() -> InstallationSnapshot {
+    collect_in_context(true)
+}
+/// A service must not mistake SYSTEM HKCU for the interactive user's hive.
+pub fn collect_for_agent() -> InstallationSnapshot {
+    collect_in_context(false)
+}
+fn collect_in_context(include_user: bool) -> InstallationSnapshot {
     let uac_enable_lua = registry_value(
         r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System",
         "EnableLUA",
@@ -35,7 +42,7 @@ pub fn collect() -> InstallationSnapshot {
     );
     let database_exists = path_exists(DATABASE);
     let (firebird_services, firebird_error) = collect_firebird();
-    let (programs, program_error) = collect_installed_software();
+    let (programs, program_error) = collect_installed_software(include_user);
     let (ibconsole_executables, ibconsole_error) = list_executables(TROIA_DIR);
     let cobian = programs
         .as_ref()
@@ -84,9 +91,7 @@ fn path_exists(path: &str) -> InspectionValue {
 }
 
 fn registry_value(key: &str, name: &str) -> InspectionValue {
-    match reg_command()
-        .args(["query", key, "/v", name])
-        .output()
+    match reg_command().and_then(|mut command| command.args(["query", key, "/v", name]).output().map_err(|e| e.to_string()))
     {
         Ok(output) if output.status.success() => {
             let value = decode_registry_output(&output.stdout)
@@ -265,7 +270,7 @@ struct FixedFileInfo {
     file_date_ls: u32,
 }
 
-fn executable_file_version(path: &str) -> Option<String> {
+pub(crate) fn executable_file_version(path: &str) -> Option<String> {
     let file_name = path
         .encode_utf16()
         .chain(std::iter::once(0))
@@ -312,19 +317,14 @@ fn executable_file_version(path: &str) -> Option<String> {
     ))
 }
 
-fn collect_installed_software() -> (Result<Vec<InstalledSoftware>, String>, Option<String>) {
+fn collect_installed_software(include_user: bool) -> (Result<Vec<InstalledSoftware>, String>, Option<String>) {
     let mut found = vec![];
     let mut issues = vec![];
     let mut successful_queries = 0;
-    for hive in ["HKLM", "HKCU"] {
+    for hive in if include_user { &["HKLM", "HKCU"][..] } else { &["HKLM"][..] } {
         for view in ["64", "32"] {
             let key = format!(r"{hive}\{UNINSTALL_ROOT}");
-            match reg_command()
-                .arg("query")
-                .arg(&key)
-                .arg("/s")
-                .arg(format!("/reg:{view}"))
-                .output()
+            match reg_command().and_then(|mut command| command.arg("query").arg(&key).arg("/s").arg(format!("/reg:{view}")).output().map_err(|e| e.to_string()))
             {
             Ok(output) if output.status.success() => {
                     successful_queries += 1;
@@ -352,10 +352,17 @@ fn collect_installed_software() -> (Result<Vec<InstalledSoftware>, String>, Opti
     }
 }
 
-fn reg_command() -> Command {
-    let mut command = Command::new("reg.exe");
+fn reg_command() -> Result<Command, String> {
+    // Fixed read-only utility; do not resolve an executable through service PATH/current directory.
+    #[link(name="kernel32")]
+    extern "system" { fn GetSystemDirectoryW(buffer: *mut u16, size: u32) -> u32; }
+    let mut buffer = [0u16; 32768];
+    let length = unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+    if length == 0 || length >= buffer.len() { return Err("Diretório de sistema do Windows indisponível".into()); }
+    let executable = std::path::PathBuf::from(String::from_utf16_lossy(&buffer[..length])).join("reg.exe");
+    let mut command = Command::new(executable);
     command.creation_flags(reg_creation_flags());
-    command
+    Ok(command)
 }
 
 fn reg_creation_flags() -> u32 {
@@ -409,10 +416,11 @@ fn parse_uninstall_entries(output: &str, hive: &str, view: &str, entries: &mut V
             values.clear();
             continue;
         }
-        let mut parts = trimmed
-            .splitn(3, char::is_whitespace)
-            .filter(|v| !v.is_empty());
-        if let (Some(name), Some(kind), Some(value)) = (parts.next(), parts.next(), parts.next()) {
+        // reg.exe pads columns with multiple spaces; preserve spaces inside the value.
+        if let Some((name, rest)) = trimmed.split_once(char::is_whitespace) {
+            let Some((kind, value)) = rest.trim_start().split_once(char::is_whitespace) else {
+                continue;
+            };
             if kind.starts_with("REG_") {
                 values.insert(name.to_ascii_lowercase(), value.trim().to_owned());
             }
@@ -549,7 +557,7 @@ fn executable_path(line: &str) -> String {
     }
     s.split_whitespace().next().unwrap_or(s).to_owned()
 }
-fn pe_architecture(path: &str) -> Option<String> {
+pub(crate) fn pe_architecture(path: &str) -> Option<String> {
     use std::io::{Read, Seek, SeekFrom};
     let mut f = fs::File::open(path).ok()?;
     let mut off = [0u8; 4];

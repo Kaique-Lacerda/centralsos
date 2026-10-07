@@ -1,0 +1,6 @@
+{
+  "identifier": "signed-updater",
+  "description": "Only the main local window may use the compiled signed updater configuration.",
+  "windows": ["main"],
+  "permissions": ["core:default", "updater:allow-check", "updater:allow-download-and-install"]
+}

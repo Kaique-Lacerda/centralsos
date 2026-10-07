@@ -10,6 +10,7 @@ use crate::models::machine::NetworkAdapterSnapshot;
 struct AdapterRow {
     name: Option<String>,
     index: Option<u32>,
+    interface_index: Option<u32>,
     #[serde(rename = "MACAddress")]
     mac_address: Option<String>,
     net_connection_status: Option<u16>,
@@ -27,6 +28,8 @@ struct AdapterRow {
 #[serde(rename_all = "PascalCase")]
 struct ConfigurationRow {
     index: Option<u32>,
+    #[serde(rename = "DHCPEnabled")]
+    dhcp_enabled: Option<bool>,
     description: Option<String>,
     #[serde(rename = "MACAddress")]
     mac_address: Option<String>,
@@ -40,18 +43,21 @@ struct ConfigurationRow {
 
 pub fn collect(connection: &WMIConnection) -> (Vec<NetworkAdapterSnapshot>, Option<String>) {
     let adapters = match connection.raw_query::<AdapterRow>(
-        "SELECT Name, Index, MACAddress, NetConnectionStatus, NetEnabled, PhysicalAdapter, Manufacturer, ProductName, ServiceName, PNPDeviceID, AdapterType FROM Win32_NetworkAdapter",
+        "SELECT Name, Index, InterfaceIndex, MACAddress, NetConnectionStatus, NetEnabled, PhysicalAdapter, Manufacturer, ProductName, ServiceName, PNPDeviceID, AdapterType FROM Win32_NetworkAdapter",
     ) {
         Ok(rows) => rows,
         Err(error) => return (Vec::new(), Some(error.to_string())),
     };
 
     let configurations = match connection.raw_query::<ConfigurationRow>(
-        "SELECT Index, Description, MACAddress, IPAddress, DefaultIPGateway, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration",
+        "SELECT Index, DHCPEnabled, Description, MACAddress, IPAddress, DefaultIPGateway, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration",
     ) {
         Ok(rows) => rows,
         Err(error) => {
             let items = adapters.into_iter().map(|adapter| NetworkAdapterSnapshot {
+                index: adapter.index,
+                interface_index: adapter.interface_index,
+                net_enabled: adapter.net_enabled,
                 name: adapter.name.unwrap_or_else(|| "Indisponível".into()),
                 status: connection_status(adapter.net_connection_status, adapter.net_enabled),
                 mac: adapter.mac_address,
@@ -93,6 +99,10 @@ pub fn collect(connection: &WMIConnection) -> (Vec<NetworkAdapterSnapshot>, Opti
                 }
             }
             NetworkAdapterSnapshot {
+                index: adapter.index,
+                interface_index: adapter.interface_index,
+                net_enabled: adapter.net_enabled,
+                dhcp_enabled: configuration.and_then(|item| item.dhcp_enabled),
                 name: adapter
                     .name
                     .or_else(|| configuration.and_then(|item| item.description.clone()))

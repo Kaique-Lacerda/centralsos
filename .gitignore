@@ -1,6 +1,9 @@
 node_modules/
 dist/
 src-tauri/target/
+crates/**/target/
+.control-build/
+.release-build/
 
 # Environment variables and local overrides
 .env
