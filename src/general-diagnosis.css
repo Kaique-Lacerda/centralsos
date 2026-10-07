@@ -1,0 +1,16 @@
+.general-diagnosis .diagnosis-summary{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0}
+.general-diagnosis .diagnosis-summary span{padding:14px 18px;border:1px solid var(--border,#283344);border-radius:10px}
+.general-diagnosis .diagnosis-summary b{font-size:24px;display:block}
+.general-diagnosis .diagnosis-incidents{display:grid;gap:14px;margin-bottom:18px}
+.general-diagnosis .diagnosis-incident header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.general-diagnosis .diagnosis-incident h3{margin:0;font-size:17px}
+.general-diagnosis .diagnosis-incident.problem{border-left:3px solid #ed7373}
+.general-diagnosis .diagnosis-incident.warning{border-left:3px solid #d6ad59}
+.general-diagnosis .diagnosis-progress{padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.general-diagnosis .diagnosis-progress li{padding:12px;border:1px solid var(--border,#283344);border-radius:8px}
+.general-diagnosis .diagnosis-progress small{display:block;margin-top:5px}
+.general-diagnosis pre{max-height:420px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.diagnosis-plan{max-height:85vh;overflow:auto}
+.validation-tabs{display:flex;gap:8px;margin-bottom:20px}
+.validation-tabs button[aria-selected=true]{border-color:var(--accent,#40bca9)}
+@media(max-width:600px){.general-diagnosis .diagnosis-incident header{align-items:flex-start;flex-direction:column}.general-diagnosis .validation-toolbar{align-items:flex-start;flex-direction:column}}

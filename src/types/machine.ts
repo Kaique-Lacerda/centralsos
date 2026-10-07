@@ -23,6 +23,8 @@ export interface MachineSystemSnapshot {
 }
 
 export interface VolumeSnapshot {
+  /** Win32_LogicalDisk.DriveType; optional for older serialized snapshots. */
+  driveType?: number | null;
   unit: string;
   label: string | null;
   totalBytes: number | null;

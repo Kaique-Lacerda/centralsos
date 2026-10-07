@@ -21,6 +21,7 @@ export const PrinterService = {
   addConnection:actionClient.addConnection,
   removePrinter:actionClient.removePrinter,
   getDiagnostic,
+  cancelProblemJob,
   repair(name:string,remoteHint=false):Promise<PrinterRepairResult> {
     const key=name.toLowerCase();const active=repairs.get(key);if(active)return active;
     const run=runPrinterAutoFix({...actionClient,getDiagnostic,cancelProblemJob},name,{remoteHint});repairs.set(key,run);

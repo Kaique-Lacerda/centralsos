@@ -198,6 +198,57 @@ pub fn collect() -> Result<SystemSupportSnapshot, String> {
         temporary,
     })
 }
+fn decode_console_with_codepage(bytes: &[u8], codepage: u32) -> String {
+    if bytes.starts_with(&[0xff, 0xfe]) {
+        let units: Vec<u16> = bytes[2..]
+            .chunks_exact(2)
+            .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+            .collect();
+        return String::from_utf16_lossy(&units);
+    }
+    if let Ok(text) = std::str::from_utf8(bytes) {
+        return text.trim_start_matches('\u{feff}').to_owned();
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn MultiByteToWideChar(
+            cp: u32,
+            flags: u32,
+            input: *const u8,
+            len: i32,
+            output: *mut u16,
+            capacity: i32,
+        ) -> i32;
+    }
+    let Ok(len) = i32::try_from(bytes.len()) else {
+        return String::from_utf8_lossy(bytes).into_owned();
+    };
+    let size = unsafe { MultiByteToWideChar(codepage, 0, bytes.as_ptr(), len, ptr::null_mut(), 0) };
+    if size <= 0 {
+        return String::from_utf8_lossy(bytes).into_owned();
+    }
+    let mut units = vec![0u16; size as usize];
+    let converted =
+        unsafe { MultiByteToWideChar(codepage, 0, bytes.as_ptr(), len, units.as_mut_ptr(), size) };
+    if converted <= 0 {
+        return String::from_utf8_lossy(bytes).into_owned();
+    }
+    String::from_utf16_lossy(&units[..converted as usize])
+}
+fn decode_console(bytes: &[u8]) -> String {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetConsoleOutputCP() -> u32;
+        fn GetOEMCP() -> u32;
+    }
+    let console_cp = unsafe { GetConsoleOutputCP() };
+    let cp = if console_cp == 0 {
+        unsafe { GetOEMCP() }
+    } else {
+        console_cp
+    };
+    decode_console_with_codepage(bytes, cp)
+}
 fn fixed_time_command(args: &[&str]) -> Result<(bool, String), String> {
     #[link(name = "kernel32")]
     extern "system" {
@@ -231,8 +282,8 @@ fn fixed_time_command(args: &[&str]) -> Result<(bool, String), String> {
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
     let text = format!(
         "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
+        decode_console(&out.stdout),
+        decode_console(&out.stderr)
     );
     Ok((out.status.success(), text.chars().take(8000).collect()))
 }
@@ -241,26 +292,33 @@ pub fn interpret_time(text: &str, ok: bool) -> Check {
         return Check::new("warning", text);
     }
     let leap = text.lines().find_map(|line| {
-        let lower = line.to_lowercase();
+        let lower = line.trim_start().to_lowercase();
         if lower.starts_with("leap indicator:") || lower.starts_with("indicador de salto:") {
             line.split(':')
                 .nth(1)?
                 .trim()
                 .chars()
-                .next()
-                .and_then(|c| c.to_digit(10))
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .parse::<u32>()
+                .ok()
+                .filter(|value| *value <= 3)
         } else {
             None
         }
     });
-    Check::new(
+    let mut check = Check::new(
         match leap {
             Some(0..=2) => "success",
             Some(3) => "warning",
             _ => "unknown",
         },
         text,
-    )
+    );
+    // For this check, code carries the parsed leap indicator (0..3).
+    // Failed commands and unrecognized locales have no indicator.
+    check.code = leap;
+    check
 }
 fn time_status() -> Check {
     match fixed_time_command(&["/query", "/status"]) {
@@ -455,6 +513,32 @@ mod tests {
     fn cleanup_requires_confirmation() {
         assert!(super::super::require_confirmation(false).is_err());
         assert_eq!(AGE, 604800);
+    }
+    #[test]
+    fn console_encoding_preserves_portuguese_and_indicator() {
+        assert_eq!(
+            decode_console_with_codepage("Sincronização".as_bytes(), 850),
+            "Sincronização"
+        );
+        assert_eq!(
+            decode_console_with_codepage(b"Sincroniza\x87\xc6o", 850),
+            "Sincronização"
+        );
+        let mut utf16 = vec![0xff, 0xfe];
+        for unit in "Última sincronização".encode_utf16() {
+            utf16.extend(unit.to_le_bytes());
+        }
+        assert_eq!(
+            decode_console_with_codepage(&utf16, 850),
+            "Última sincronização"
+        );
+        assert_eq!(
+            interpret_time("  Indicador de salto: 3", true).code,
+            Some(3)
+        );
+        assert_eq!(interpret_time("Indicador de salto: 3", false).code, None);
+        assert_eq!(interpret_time("Unknown locale", true).code, None);
+        assert_eq!(interpret_time("Indicador de salto: 30", true).code, None);
     }
     #[test]
     fn temporary_policy_is_conservative() {

@@ -8,6 +8,7 @@ import '../windows-services-diagnostic.css';
 import { SupportService } from '../services/support/SupportService';
 import { correctKnownServices } from '../services/support/SupportRepair';
 import { canCorrectService } from '../services/support/SupportInterpretation';
+import { isReadOnlyService } from '../services/support/ServiceSafety';
 import type { ServiceAction } from '../types/support';
 import { useSupportConfirmation } from './support/SupportUI';
 
@@ -35,11 +36,11 @@ function ServiceCard({ service, busy, action }: { service: WindowsServiceSnapsho
         </div>
       </div>
     </header>
-    <div className="support-actions">
+    {isReadOnlyService(service) ? <p className="snapshot-note">Serviço estrutural/crítico · somente leitura</p> : <div className="support-actions">
       <button className="primary" disabled={busy || service.state !== 'Stopped' || normalized(service.startMode) === 'disabled'} onClick={() => action(service, 'start')}>{canCorrectService(service) ? 'Corrigir · Iniciar' : 'Iniciar'}</button>
       <button className="linkbtn" disabled={busy || service.state !== 'Running'} onClick={() => action(service, 'restart')}>Reiniciar</button>
       <button className="linkbtn" disabled={busy || service.state !== 'Running'} onClick={() => action(service, 'stop')}>Parar</button>
-    </div>
+    </div>}
     <details className="support-details"><summary>Detalhes técnicos</summary><dl className="windows-service-details">
       <div><dt>Inicialização</dt><dd>{service.startMode || 'Não disponível'}</dd></div>
       <div><dt>Status</dt><dd>{service.status || 'Não disponível'}</dd></div>

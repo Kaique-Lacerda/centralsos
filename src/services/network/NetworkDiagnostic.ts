@@ -2,6 +2,9 @@ import type { NetworkAdapterSnapshot, SnapshotCollection } from '../../types/mac
 
 export type NetworkAdapterKind = 'Físico' | 'Virtual' | 'VPN' | 'Sistema' | 'Não determinado';
 export type NetworkConnectionState = 'connected' | 'disconnected' | 'connecting' | 'unknown';
+export function networkAdministrativeState(adapter: NetworkAdapterSnapshot): 'enabled' | 'disabled' | 'unknown' {
+  return adapter.netEnabled === true ? 'enabled' : adapter.netEnabled === false ? 'disabled' : 'unknown';
+}
 
 const vpnIndicators = ['tailscale', 'wireguard', 'wintun', 'openvpn', 'fortinet', 'anyconnect', 'globalprotect', 'pangp', 'vpn tunnel'];
 const wanMiniportIndicators = ['wan miniport'];
