@@ -60,13 +60,28 @@ pub fn run(stop: Receiver<()>, shutdown: Arc<AtomicBool>) -> Result<(), String> 
     let mut journal: Option<(String, Journal)> = None;
     let flag = shutdown.clone();
     let worker = std::thread::spawn(move || heartbeat(flag));
+    #[cfg(windows)]
+    let helper_worker = {
+        let flag = shutdown.clone();
+        std::thread::spawn(move || crate::lifecycle::supervise(flag))
+    };
     struct Guard {
         flag: Arc<AtomicBool>,
         worker: Option<std::thread::JoinHandle<()>>,
+        #[cfg(windows)]
+        helper_worker: Option<std::thread::JoinHandle<()>>,
     }
     impl Drop for Guard {
         fn drop(&mut self) {
             self.flag.store(true, Ordering::SeqCst);
+            #[cfg(windows)]
+            {
+                crate::lifecycle::invalidate();
+                crate::lifecycle::wake();
+                if let Some(w) = self.helper_worker.take() {
+                    let _ = w.join();
+                }
+            }
             if let Some(w) = self.worker.take() {
                 let _ = w.join();
             }
@@ -75,6 +90,8 @@ pub fn run(stop: Receiver<()>, shutdown: Arc<AtomicBool>) -> Result<(), String> 
     let _guard = Guard {
         flag: shutdown.clone(),
         worker: Some(worker),
+        #[cfg(windows)]
+        helper_worker: Some(helper_worker),
     };
     let mut attempts = 0;
     loop {

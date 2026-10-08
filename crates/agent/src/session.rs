@@ -58,7 +58,7 @@ pub fn execute(command: &Command, remaining: std::time::Duration) -> serde_json:
     let result = delegate(
         &command,
         windows::discover,
-        windows::exchange,
+        crate::lifecycle::exchange,
         chrono::Utc::now().timestamp_millis(),
     );
     #[cfg(not(windows))]
@@ -76,6 +76,18 @@ pub fn execute(command: &Command, remaining: std::time::Duration) -> serde_json:
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn expired_session_command_never_discovers_or_reaches_ipc() {
+        let mut c = command("session.info");
+        c.expires_at = (chrono::Utc::now() - chrono::Duration::seconds(1)).to_rfc3339();
+        let result = delegate(
+            &c,
+            || panic!("discovery must not execute"),
+            |_| panic!("IPC must not execute"),
+            chrono::Utc::now().timestamp_millis(),
+        );
+        assert_eq!(result.unwrap_err().code, ErrorCode::SessionExpired);
+    }
     fn command(kind: &str) -> Command {
         let now = chrono::Utc::now();
         Command {
