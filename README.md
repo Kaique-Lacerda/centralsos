@@ -115,6 +115,10 @@ Adicione uma regra com id, título, categoria, perfis aplicáveis e `validate(sn
 
 As páginas de Instalações e Favoritos são estruturas iniciais; os serviços de processos e Windows continuam reservados. O mock de suporte não autentica ninguém. O dashboard só mostra estado “não verificado” quando não há dados. Configure uma URL central de release quando houver um artefato publicado; nenhuma URL fictícia é incluída.
 
-## Coleta MachineSnapshot
+## Suporte Desktop independente
+
+O aplicativo do técnico possui Tauri próprio em `src-tauri-support/`, identidade `br.com.centralsos.support` e manifesto `asInvoker`. Execute `npm run support:dev` ou gere o executável local com `npm run support:build`. Configuração HTTPS, autenticação nativa, segurança, comandos, testes e limitações estão em [docs/support-desktop.md](docs/support-desktop.md). O Cliente e seu updater permanecem independentes.
+
+## Coleta MachineSnapshot (Cliente)
 
 O snapshot é obtido manualmente por `MachineSnapshotService.getSnapshot()`. O comando `get_machine_snapshot` lê hostname, usuário e arquitetura, e consulta via WMI sistema operacional, versão/build, fabricante/modelo, CPU, RAM, BIOS, volumes lógicos, adaptadores/IP/gateway/DNS e impressoras. Uma falha em uma consulta fica indicada na seção correspondente sem descartar as demais. Serviços e processos não são listados; há apenas tipos para consultas futuras direcionadas.

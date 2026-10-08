@@ -22,7 +22,12 @@
     "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs src/services/releases/tests/*.test.mjs src/services/windows/tests/*.test.mjs src/services/windows-services/tests/*.test.mjs src/services/support/tests/*.test.mjs src/pages/tests/*.test.mjs",
     "test:tools": "node --test src/services/tools/tests/*.test.mjs",
     "test:control": "node --test tests/control/*.test.mjs",
-    "control:dev": "node scripts/control-server.mjs"
+    "control:dev": "node scripts/control-server.mjs",
+    "support:dev": "node scripts/support-tauri.mjs dev",
+    "support:check": "node scripts/support-tauri.mjs check",
+    "support:test": "node scripts/support-tauri.mjs test",
+    "support:build": "node scripts/support-tauri.mjs build",
+    "support:bundle": "node scripts/support-tauri.mjs bundle"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

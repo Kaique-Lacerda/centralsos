@@ -54,12 +54,13 @@ test('consumidores locais do catálogo continuam escolhendo o transporte Desktop
     }
 });
 
-test('Suporte possui Control e contracts, sem diagnósticos locais, enrollment ou Tauri', async () => {
+test('Suporte possui Control e bridge Tauri própria, sem diagnósticos locais ou enrollment', async () => {
     const graph = graphs.support.join('\n');
     assert.match(graph, /ControlPage/);
     assert.match(graph, /ControlBrowserTransport/);
     assert.match(graph, /packages\/contracts\/control\/contracts/);
-    assert.doesNotMatch(graph, /@tauri-apps|AgentLinkService|AgentSettings|UpdaterService|MachineSnapshotService/);
+    assert.match(graph, /SupportDesktopBridge|@tauri-apps\/api/);
+    assert.doesNotMatch(graph, /AgentLinkService|AgentSettings|UpdaterService|MachineSnapshotService|@tauri-apps\/plugin/);
     assert.doesNotMatch(graph, /src\/pages\/(?:support|Printer|Network|WindowsServices|Diagnosis)|src\/tools\/registry/);
     assert.doesNotMatch(graph, /src\/services\/(?:runtime|printers|network|snapshot|validation|diagnosis|support|windows|windows-services|system|processes|storage)\//);
     const { getProductRuntime } = await load('src/apps/product.ts');
@@ -79,7 +80,7 @@ test('rotas são próprias: /control somente no Suporte, rotas públicas não si
         const routes = createRoutesFromElements(Router().props.children);
         const leaf = path => matchRoutes(routes, path).at(-1).route;
         if (product === 'support') {
-            assert.equal(leaf('/control').element.type.name, 'ControlPage');
+            assert.equal(leaf('/control').element.type.name, 'SupportControlPage');
             assert.equal(leaf('/').element.type, Navigate);
             assert.equal(leaf('/').element.props.to, '/control');
         } else {

@@ -68,6 +68,8 @@ export default defineConfig(({ mode }) => {
     build: { outDir: product.outDir },
     server: {
       strictPort: true, port: product.port,
+      // Rust's own watcher handles this application; avoid watching its build tree from Vite.
+      watch: mode === 'support' ? { ignored: ['**/src-tauri-support/**'] } : undefined,
       proxy: { '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
     }
   };
