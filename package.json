@@ -23,6 +23,8 @@
     "test:tools": "node --test src/services/tools/tests/*.test.mjs",
     "test:control": "node --test tests/control/*.test.mjs",
     "control:dev": "node scripts/control-server.mjs",
+    "control:admin": "node scripts/control-admin.mjs",
+    "test:control:integration": "node --test tests/integration/*.test.mjs",
     "support:dev": "node scripts/support-tauri.mjs dev",
     "support:check": "node scripts/support-tauri.mjs check",
     "support:test": "node scripts/support-tauri.mjs test",

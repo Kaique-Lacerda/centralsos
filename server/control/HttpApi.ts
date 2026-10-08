@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z, ZodError } from 'zod';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import { ControlBackend, ApiError } from './ControlBackend.js';
 import { PostgresRepository } from './PostgresRepository.js';
 import { ControlAuthentication } from './Authentication.js';
@@ -9,6 +9,8 @@ import { limitEnrollment } from './EnrollmentRateLimit.js';
 import { NativeAuthentication, NativeAuthError } from './NativeAuthentication.js';
 import { PostgresNativeAuthRepository } from './NativeAuthRepository.js';
 import { handleNativeAuth, requireNativeContext, requireNativeHttps } from './NativeAuthHttp.js';
+import { controlConfiguration, createControlPool } from './Configuration.js';
+import { safeRequestDiagnostic } from './Diagnostics.js';
 const pairSchema = z.object({ environmentId: z.uuid(), profile: profileSchema, serverDeviceId: z.uuid().nullable().default(null) }).strict();
 export interface ControlApiServices {
     backend: ControlBackend;
@@ -24,12 +26,11 @@ function services() {
     const names = ['CONTROL_DATABASE_URL', 'CONTROL_OIDC_ISSUER', 'CONTROL_OIDC_CLIENT_ID', 'CONTROL_OIDC_CLIENT_SECRET', 'CONTROL_ORIGIN', 'CONTROL_SESSION_SECRET'] as const;
     if (names.some(name => !process.env[name]))
         throw new ApiError(503, 'Control não configurado: banco, HTTPS e autenticação ainda precisam ser definidos.');
-    if (!Number.isInteger(Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90)) || Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90) < 30 || Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90) > 3600)
-        throw new ApiError(503, 'CONTROL_OFFLINE_SECONDS precisa estar entre 30 e 3600.');
-    const pool = new Pool({ connectionString: process.env.CONTROL_DATABASE_URL, max: 4, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000, statement_timeout: 10000 });
-    const origin = process.env.CONTROL_ORIGIN!.replace(/\/$/, '');
-    const auth = new ControlAuthentication(pool, { issuer:process.env.CONTROL_OIDC_ISSUER!,clientId:process.env.CONTROL_OIDC_CLIENT_ID!,clientSecret:process.env.CONTROL_OIDC_CLIENT_SECRET!,origin,sessionSecret:process.env.CONTROL_SESSION_SECRET! });
-    cached = { pool,backend:new ControlBackend(new PostgresRepository(pool),undefined,Number(process.env.CONTROL_OFFLINE_SECONDS??90)*1000),auth,origin,nativeAuth:new NativeAuthentication(new PostgresNativeAuthRepository(pool),auth,origin,process.env.CONTROL_SESSION_SECRET!) };
+    const config = controlConfiguration(process.env);
+    const pool = createControlPool(process.env);
+    const origin = config.origin;
+    const auth = new ControlAuthentication(pool, config.auth);
+    cached = { pool,backend:new ControlBackend(new PostgresRepository(pool),undefined,config.offlineSeconds*1000),auth,origin,nativeAuth:new NativeAuthentication(new PostgresNativeAuthRepository(pool),auth,origin,config.auth.sessionSecret) };
     return cached;
 }
 export async function readBody(req: IncomingMessage): Promise<unknown> {
@@ -143,7 +144,7 @@ export async function handleControlApi(req: IncomingMessage, res: ServerResponse
         if (e instanceof NativeAuthError && status===429) res.setHeader('Retry-After','60');
         if (e instanceof NativeAuthError && status===401) res.setHeader('WWW-Authenticate','Bearer realm="central-sos-control"');
         res.end(JSON.stringify({ error: e instanceof ApiError ? e.message : e instanceof ZodError ? 'Contrato inválido.' : 'Backend indisponível; consulte os logs administrativos.', ...(e instanceof NativeAuthError ? {code:e.code} : {}) }));
-        if (!(e instanceof ApiError || e instanceof ZodError))
-            console.error(JSON.stringify({ event: 'control.request_failed', code: 'BACKEND_FAILURE' }));
+        if (!(e instanceof ZodError))
+            console.error(JSON.stringify(safeRequestDiagnostic(req.url?.split('?')[0] ?? '', e)));
     }
 }
