@@ -1,5 +1,4 @@
 import { fetchGitHubResponse, GITHUB_REPOSITORY_API } from '../releases/GitHubReleaseService';
-import { runtimeEnvironment } from '../runtime/environment';
 
 const RELEASES_API = `${GITHUB_REPOSITORY_API}/releases?per_page=100`;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -57,7 +56,7 @@ interface GithubRelease {
 
 type ParsedTagVersion = [string, string, string];
 
-let cached: { value: GitHubToolsLookup; expiresAt: number } | null = null;
+let cached: { value: GitHubToolsLookup; expiresAt: number; runtime: 'web' | 'desktop' } | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -148,7 +147,7 @@ function validManifestAssetUrl(value: unknown): value is string {
 export function getToolsManifestRequest(
   tag: string,
   releaseAssetUrl: string,
-  environment: 'web' | 'desktop' = runtimeEnvironment
+  environment: 'web' | 'desktop' = 'web'
 ): { url: string; accept: string } {
   if (environment === 'web') {
     return { url: `/api/tools-manifest?tag=${encodeURIComponent(tag)}`, accept: 'application/json' };
@@ -219,14 +218,16 @@ export async function getGitHubToolsCatalog(options: {
   refresh?: boolean;
   fetcher?: typeof fetch;
   now?: () => number;
+  runtime?: 'web' | 'desktop';
 } = {}): Promise<GitHubToolsLookup> {
   const now = options.now ?? Date.now;
-  if (!options.refresh && cached && cached.expiresAt > now()) return cached.value;
+  const runtime = options.runtime ?? 'web';
+  if (!options.refresh && cached?.runtime === runtime && cached.expiresAt > now()) return cached.value;
   const fetcher = options.fetcher ?? fetch;
   const releasesResponse = await fetchGitHubResponse(RELEASES_API, { fetcher });
   if (releasesResponse.status === 404) {
     const result: GitHubToolsLookup = { status: 'not-published' };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
   const releaseList: unknown = await releasesResponse.json();
@@ -234,7 +235,7 @@ export async function getGitHubToolsCatalog(options: {
   const selected = selectToolsRelease(releaseList);
   if (!selected) {
     const result: GitHubToolsLookup = { status: 'not-published' };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
 
@@ -248,15 +249,15 @@ export async function getGitHubToolsCatalog(options: {
     const result: GitHubToolsLookup = manifests.length === 0
       ? { status: 'manifest-missing', release }
       : { status: 'manifest-invalid', release, reason: 'A Release não possui exatamente um asset de manifesto válido.' };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
 
-  const manifestRequest = getToolsManifestRequest(selected.tag_name, manifests[0].url, runtimeEnvironment);
+  const manifestRequest = getToolsManifestRequest(selected.tag_name, manifests[0].url, runtime);
   const manifestResponse = await fetchGitHubResponse(manifestRequest.url, { fetcher, accept: manifestRequest.accept });
   if (manifestResponse.status === 404) {
     const result: GitHubToolsLookup = { status: 'manifest-missing', release };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
   let payload: unknown;
@@ -264,17 +265,17 @@ export async function getGitHubToolsCatalog(options: {
     payload = JSON.parse(await manifestResponse.text());
   } catch {
     const result: GitHubToolsLookup = { status: 'manifest-invalid', release, reason: 'O asset tools-manifest.json não contém JSON válido.' };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
   const parsed = parseManifest(payload, selected.tag_name);
   if (!parsed.valid) {
     const result: GitHubToolsLookup = { status: 'manifest-invalid', release, reason: parsed.reason };
-    cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+    cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
     return result;
   }
 
   const result: GitHubToolsLookup = { status: 'available', release, tools: resolveTools(parsed.tools, assets) };
-  cached = { value: result, expiresAt: now() + CACHE_TTL_MS };
+  cached = { value: result, expiresAt: now() + CACHE_TTL_MS, runtime };
   return result;
 }

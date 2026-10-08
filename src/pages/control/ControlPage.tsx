@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { commandPolicies, commandDefinitions, PROTOCOL_VERSION, buildTopology, type Device, type Environment, type CommandType, type RemoteCommandResult } from '../../../packages/contracts/control/contracts';
-import { ControlService } from '../../services/control/ControlService';
+import { ControlService, controlBrowserAuth } from '../../services/control/ControlService';
 import { compareVersions } from '../../services/updater/UpdateContract';
 import { getLatestWindowsRelease } from '../../services/releases/GitHubReleaseService';
-import { useSupportConfirmation } from '../support/SupportUI';
+import { useConfirmation as useSupportConfirmation } from '../../components/confirmation/useConfirmation';
 import '../../support-tools.css';
 import '../../control.css';
 const labels: Record<CommandType, string> = { 'machine.refresh': 'Atualizar máquina', 'machine.validate': 'Validar máquina', 'printer.check': 'Verificar impressora', 'printer.auto_fix': 'Verificar e corrigir impressora', 'spooler.restart': 'Reiniciar Spooler', 'service.check': 'Consultar serviços', 'session.info': 'Consultar sessão', 'session.processes': 'Processos do usuário', 'session.printers': 'Impressoras do usuário' };
@@ -59,7 +58,7 @@ export function ControlPage() {
         setBusy(false);
     } };
     const outdated = devices.filter(d => latest && compareVersions(d.appVersion, latest) < 0).length;
-    return <main className="control-page"><header className="support-heading"><div><small>CENTRAL SOS CONTROL</small><h1>Ambientes e dispositivos</h1><p>Suporte por comandos conhecidos, sem controle de tela.</p></div><div className="support-actions"><Link to="/">Ferramentas locais</Link><a href="/api/control/auth/login">Entrar</a><button className="primary" onClick={() => void refresh()}>Atualizar</button></div></header>{error && <p className="error">{error}</p>}<p>{devices.length} dispositivos · {devices.filter(d => d.status === 'OFFLINE').length} offline · {latest ? `${devices.length - outdated} na versão atual ou superior · ${outdated} desatualizados` : 'Versão publicada não confirmada'}</p>{environments.map(env => {
+    return <main className="control-page"><header className="support-heading"><div><small>CENTRAL SOS CONTROL</small><h1>Ambientes e dispositivos</h1><p>Suporte por comandos conhecidos, sem controle de tela.</p></div><div className="support-actions"><a href={controlBrowserAuth.loginUrl}>Entrar</a><button className="primary" onClick={() => void refresh()}>Atualizar</button></div></header>{error && <p className="error">{error}</p>}<p>{devices.length} dispositivos · {devices.filter(d => d.status === 'OFFLINE').length} offline · {latest ? `${devices.length - outdated} na versão atual ou superior · ${outdated} desatualizados` : 'Versão publicada não confirmada'}</p>{environments.map(env => {
             const list = devices.filter(d => d.environmentId === env.id);
             const tree = buildTopology(list);
             const card = (d: Device) => <button key={d.id} className={`control-device ${d.status === 'OFFLINE' ? 'offline' : d.healthSummary ?? 'unknown'}`} onClick={() => setSelected(d.id)}><b>{d.displayName}</b><span>{d.status === 'NEVER_CONNECTED' ? 'Nunca conectado' : d.status === 'OFFLINE' ? 'Offline' : d.status === 'DEGRADED' ? 'Degradado · ver detalhes' : d.healthSummary === 'critical' ? 'Problema' : d.healthSummary === 'warnings' ? 'Atenção' : d.healthSummary === 'ok' ? 'OK' : 'Online · não verificado'}</span><small>{d.profile} · App {d.appVersion} · Agent {d.agentVersion} · Core {d.coreVersion} · Protocolo {d.protocolVersion}</small><small>Última comunicação: {d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString() : 'Nenhuma'}{latest && compareVersions(d.appVersion, latest) < 0 ? ' · Atualização disponível' : ''}</small></button>;

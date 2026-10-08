@@ -81,6 +81,30 @@ test('usa a rota same-origin no browser e preserva o endpoint do asset no Deskto
   });
 });
 
+test('catálogo recebe runtime explícito sem importar Tauri; cache Web não substitui consulta Desktop', async () => {
+  const releases = [releaseWith('tools-v0.1.0', [
+    { name: 'tools-manifest.json', url: assetUrl('tools-v0.1.0') },
+    releaseAsset('tools-v0.1.0', 'Firebird-2.5.9.exe', 12)
+  ])];
+  const calls = [];
+  const fetcher = async (url, init) => {
+    calls.push(String(url));
+    return catalogFetcher(releases, manifestFor())(url, init);
+  };
+  const web = await getGitHubToolsCatalog({ runtime: 'web', refresh: true, fetcher });
+  assert.equal(web.status, 'available');
+  assert.equal(calls[1], '/api/tools-manifest?tag=tools-v0.1.0');
+  calls.length = 0;
+  const desktop = await getGitHubToolsCatalog({ runtime: 'desktop', fetcher });
+  assert.deepEqual(desktop, web);
+  assert.equal(calls[1], assetUrl('tools-v0.1.0'));
+  calls.length = 0;
+  assert.deepEqual(await getGitHubToolsCatalog({ runtime: 'desktop', fetcher }), desktop);
+  assert.equal(calls.length, 0);
+  await getGitHubToolsCatalog({ runtime: 'web', fetcher });
+  assert.equal(calls[1], '/api/tools-manifest?tag=tools-v0.1.0');
+});
+
 test('filtra apenas tags tools-* e seleciona a maior versão sem confundir releases do app', () => {
   const selected = selectToolsRelease([
     releaseWith('v9.9.9'),

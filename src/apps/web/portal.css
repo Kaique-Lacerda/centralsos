@@ -1,0 +1,11 @@
+body:has(.public-portal) { min-width: 320px; }
+.public-portal .portal-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 32px; border-bottom: 1px solid #292d36; }
+.public-portal .brand { padding: 0; }
+.public-portal nav { display: flex; flex-wrap: wrap; gap: 16px; }
+.public-portal nav a, .public-portal .portal-cards a { color: #dce0e8; text-decoration: none; }
+.public-portal nav a.active { color: #b8a5ff; }
+.portal-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.portal-cards p, .public-portal .panel p { color: #929aa8; line-height: 1.6; }
+.portal-cards span { display: flex; align-items: center; gap: 8px; color: #b8a5ff; }
+.portal-footer { padding: 24px; text-align: center; color: #858d9b; font-size: 11px; }
+@media (max-width: 760px) { .portal-cards { grid-template-columns: 1fr; } .public-portal .page { padding: 24px 16px; } .public-portal .portal-header { padding: 20px 16px; } }

@@ -1,7 +1,8 @@
 import type { CommandRequest, Device, Environment, RemoteCommand, RemoteCommandResult } from '../../../packages/contracts/control/contracts';
+import { createControlBrowserTransport } from './ControlBrowserTransport';
+export { controlBrowserAuth } from './ControlBrowserTransport';
 export function createControlClient(fetcher: typeof fetch = fetch) {
-    const request = async <T>(path: string, body?: unknown): Promise<T> => { const r = await fetcher('/api/control' + path, { method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', headers: body === undefined ? {} : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(12000) }); const data = await r.json(); if (!r.ok)
-        throw new Error(data.error ?? `Control HTTP ${r.status}`); return data as T; };
+    const request = createControlBrowserTransport(fetcher);
     return { environments: () => request<Environment[]>('/environments'), devices: () => request<Device[]>('/devices'),
         device: (id: string) => request<{
             device: Device;
