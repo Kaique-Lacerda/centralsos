@@ -6,13 +6,18 @@ import { PostgresRepository } from './PostgresRepository.js';
 import { ControlAuthentication } from './Authentication.js';
 import { profileSchema } from '../../packages/contracts/control/contracts.js';
 import { limitEnrollment } from './EnrollmentRateLimit.js';
+import { NativeAuthentication, NativeAuthError } from './NativeAuthentication.js';
+import { PostgresNativeAuthRepository } from './NativeAuthRepository.js';
+import { handleNativeAuth, requireNativeContext, requireNativeHttps } from './NativeAuthHttp.js';
 const pairSchema = z.object({ environmentId: z.uuid(), profile: profileSchema, serverDeviceId: z.uuid().nullable().default(null) }).strict();
-let cached: {
+export interface ControlApiServices {
     backend: ControlBackend;
     auth: ControlAuthentication;
     origin: string;
     pool: Pool;
-} | null = null;
+    nativeAuth: NativeAuthentication;
+}
+let cached: ControlApiServices | null = null;
 function services() {
     if (cached)
         return cached;
@@ -22,7 +27,9 @@ function services() {
     if (!Number.isInteger(Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90)) || Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90) < 30 || Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90) > 3600)
         throw new ApiError(503, 'CONTROL_OFFLINE_SECONDS precisa estar entre 30 e 3600.');
     const pool = new Pool({ connectionString: process.env.CONTROL_DATABASE_URL, max: 4, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000, statement_timeout: 10000 });
-    cached = { pool, backend: new ControlBackend(new PostgresRepository(pool), undefined, Number(process.env.CONTROL_OFFLINE_SECONDS ?? 90) * 1000), auth: new ControlAuthentication(pool, { issuer: process.env.CONTROL_OIDC_ISSUER!, clientId: process.env.CONTROL_OIDC_CLIENT_ID!, clientSecret: process.env.CONTROL_OIDC_CLIENT_SECRET!, origin: process.env.CONTROL_ORIGIN!.replace(/\/$/, ''), sessionSecret: process.env.CONTROL_SESSION_SECRET! }), origin: process.env.CONTROL_ORIGIN!.replace(/\/$/, '') };
+    const origin = process.env.CONTROL_ORIGIN!.replace(/\/$/, '');
+    const auth = new ControlAuthentication(pool, { issuer:process.env.CONTROL_OIDC_ISSUER!,clientId:process.env.CONTROL_OIDC_CLIENT_ID!,clientSecret:process.env.CONTROL_OIDC_CLIENT_SECRET!,origin,sessionSecret:process.env.CONTROL_SESSION_SECRET! });
+    cached = { pool,backend:new ControlBackend(new PostgresRepository(pool),undefined,Number(process.env.CONTROL_OFFLINE_SECONDS??90)*1000),auth,origin,nativeAuth:new NativeAuthentication(new PostgresNativeAuthRepository(pool),auth,origin,process.env.CONTROL_SESSION_SECRET!) };
     return cached;
 }
 export async function readBody(req: IncomingMessage): Promise<unknown> {
@@ -46,16 +53,18 @@ export async function readBody(req: IncomingMessage): Promise<unknown> {
         throw new ApiError(400, 'JSON inválido.');
     }
 }
-export async function handleControlApi(req: IncomingMessage, res: ServerResponse) {
+export async function handleControlApi(req: IncomingMessage, res: ServerResponse, suppliedServices?: ControlApiServices) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     try {
-        const { backend, auth, origin, pool } = services();
+        const { backend, auth, origin, pool, nativeAuth } = suppliedServices ?? services();
         const url = new URL(req.url ?? '/', origin);
         const path = url.pathname;
         const method = req.method ?? 'GET';
         let result: unknown;
+        const peer = process.env.VERCEL === '1' ? String(req.headers['x-vercel-forwarded-for'] ?? req.socket?.remoteAddress ?? 'unknown').split(',')[0] : req.socket?.remoteAddress ?? 'unknown';
+        if (await handleNativeAuth(req,res,nativeAuth,peer)) return;
         if (path === '/api/control/auth/login' && method === 'GET') {
             const login = await auth.login();
             res.setHeader('Set-Cookie', login.cookie);
@@ -72,7 +81,6 @@ export async function handleControlApi(req: IncomingMessage, res: ServerResponse
         }
         if (path === '/api/agent/enroll' && method === 'POST') {
             // Trust Vercel's overwritten header only on Vercel, otherwise use the direct peer.
-            const peer = process.env.VERCEL === '1' ? String(req.headers['x-vercel-forwarded-for'] ?? req.socket?.remoteAddress ?? 'unknown').split(',')[0] : req.socket?.remoteAddress ?? 'unknown';
             await limitEnrollment(pool, peer);
             result = await backend.enroll(await readBody(req));
         }
@@ -93,9 +101,17 @@ export async function handleControlApi(req: IncomingMessage, res: ServerResponse
                 throw new ApiError(404, 'Endpoint não encontrado.');
         }
         else if (path.startsWith('/api/control/')) {
-            if (method !== 'GET' && req.headers.origin !== origin)
-                throw new ApiError(403, 'Origem não autorizada.');
-            const actor = await auth.authenticate(req.headers.cookie);
+            let actor;
+            if (req.headers.authorization !== undefined || req.headers['x-central-sos-client'] !== undefined) {
+                requireNativeHttps(req);
+                const token = requireNativeContext(req);
+                if (url.search) throw new NativeAuthError('INVALID_REQUEST',400,'Parâmetros não são aceitos na URL da API nativa.');
+                await nativeAuth.limit(peer,'operator-api',120);
+                actor = (await nativeAuth.authenticate(token)).actor;
+            } else {
+                if (method !== 'GET' && req.headers.origin !== origin) throw new ApiError(403,'Origem não autorizada.');
+                actor = await auth.authenticate(req.headers.cookie);
+            }
             const d = path.match(/^\/api\/control\/devices\/([a-f0-9-]{36})(\/commands)?$/);
             const c = path.match(/^\/api\/control\/commands\/([a-f0-9-]{36})$/);
             if (path === '/api/control/session' && method === 'GET')
@@ -124,7 +140,9 @@ export async function handleControlApi(req: IncomingMessage, res: ServerResponse
     catch (e) {
         const status = e instanceof ApiError ? e.status : e instanceof ZodError ? 400 : 503;
         res.statusCode = status;
-        res.end(JSON.stringify({ error: e instanceof ApiError ? e.message : e instanceof ZodError ? 'Contrato inválido.' : 'Backend indisponível; consulte os logs administrativos.' }));
+        if (e instanceof NativeAuthError && status===429) res.setHeader('Retry-After','60');
+        if (e instanceof NativeAuthError && status===401) res.setHeader('WWW-Authenticate','Bearer realm="central-sos-control"');
+        res.end(JSON.stringify({ error: e instanceof ApiError ? e.message : e instanceof ZodError ? 'Contrato inválido.' : 'Backend indisponível; consulte os logs administrativos.', ...(e instanceof NativeAuthError ? {code:e.code} : {}) }));
         if (!(e instanceof ApiError || e instanceof ZodError))
             console.error(JSON.stringify({ event: 'control.request_failed', code: 'BACKEND_FAILURE' }));
     }

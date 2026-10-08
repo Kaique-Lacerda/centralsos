@@ -4,7 +4,7 @@ O repositório reúne três frontends independentes: CENTRAL SOS Cliente (Deskto
 
 ## Arquitetura
 
-React + TypeScript renderiza cada produto a partir de seu próprio entrypoint/router/shell. Serviços locais chamam comandos Tauri nomeados; não há executor genérico de shell. `MachineEnvironment` permanece no `localStorage` do Cliente. Backend/API, contracts e regras compartilhadas permanecem separados da UI pública. Veja [Entrypoints e ownership dos produtos](docs/product-entrypoints.md), incluindo o bloqueio atual da autenticação nativa do Suporte.
+React + TypeScript renderiza cada produto a partir de seu próprio entrypoint/router/shell. Serviços locais chamam comandos Tauri nomeados; não há executor genérico de shell. `MachineEnvironment` permanece no `localStorage` do Cliente. Backend/API, contracts e regras compartilhadas permanecem separados da UI pública. Veja [Entrypoints e ownership dos produtos](docs/product-entrypoints.md) e [Autenticação nativa do Suporte](docs/support-native-auth.md). A fundação Backend do login nativo está disponível; o host Tauri Suporte e a guarda Rust da credencial pertencem à próxima etapa.
 
 ## Stack e ambientes
 
