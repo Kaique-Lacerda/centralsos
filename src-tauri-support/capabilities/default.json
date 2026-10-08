@@ -1,0 +1,6 @@
+{
+  "identifier": "support-main",
+  "description": "Only typed Support login/session and Control commands; no plugins or local administration.",
+  "windows": ["main"],
+  "permissions": ["allow-support-status", "allow-support-login-start", "allow-support-login-poll", "allow-support-login-complete", "allow-support-session", "allow-support-logout", "allow-support-control"]
+}

@@ -1,7 +1,7 @@
 export type Product = 'client' | 'support' | 'web';
 export type HostRuntime = 'web' | 'desktop';
 
-/** Product ownership is distinct from the host; Support is currently a browser preview. */
+/** Product ownership is distinct from the host; only Client owns local machine operations. */
 export function getProductRuntime(product: Product, host: HostRuntime) {
     return {
         product,
