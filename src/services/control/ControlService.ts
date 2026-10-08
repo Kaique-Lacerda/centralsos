@@ -1,8 +1,8 @@
 import type { CommandRequest, Device, Environment, RemoteCommand, RemoteCommandResult } from '../../../packages/contracts/control/contracts';
 import { createControlBrowserTransport } from './ControlBrowserTransport';
+import type { ControlTransport } from '../../../packages/contracts/control/NativeAuthentication';
 export { controlBrowserAuth } from './ControlBrowserTransport';
-export function createControlClient(fetcher: typeof fetch = fetch) {
-    const request = createControlBrowserTransport(fetcher);
+export function createControlApi(request: ControlTransport) {
     return { environments: () => request<Environment[]>('/environments'), devices: () => request<Device[]>('/devices'),
         device: (id: string) => request<{
             device: Device;
@@ -26,4 +26,5 @@ export function createControlClient(fetcher: typeof fetch = fetch) {
             expiresAt: string;
         }>('/pairing', { environmentId, profile, serverDeviceId }) };
 }
+export function createControlClient(fetcher: typeof fetch = fetch) { return createControlApi(createControlBrowserTransport(fetcher)); }
 export const ControlService = createControlClient();
