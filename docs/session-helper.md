@@ -78,9 +78,16 @@ Build do processo separado:
 cargo build --manifest-path crates/session-helper/Cargo.toml
 ```
 
-Para integração real, os dois executáveis devem estar **lado a lado em instalação protegida**, e o Helper deve ser iniciado pelo usuário dentro da sessão interativa. Não rodar Helper via serviço/SYSTEM. O padrão deste executável é asInvoker; não se altera a elevação do Desktop Tauri.
+Para integração real, os dois executáveis devem estar **lado a lado em instalação protegida**.
+O Agent agora supervisiona e inicia o Helper com token não elevado da sessão elegível; não
+rodar Helper como serviço/SYSTEM. O Helper também recusa elevação em runtime e usa manifesto
+asInvoker. A elevação do Desktop Tauri permanece intacta.
 
-Esta etapa não instala serviço, copia binários, cria tarefa agendada, altera ACL ou adiciona auto-start. Um build na worktree geralmente tem owner/ACL de usuário: será recusado por projeto. A implantação e o auto-start do Helper ficam para etapa específica. Não são relaxadas verificações para viabilizar teste em pasta não confiável.
+Build/testes não instalam serviço, copiam binários, criam tarefa agendada ou alteram ACL.
+Um build na worktree geralmente tem owner/ACL de usuário e hardlinks: será recusado por projeto.
+O lifecycle e as rotinas administrativas explícitas estão descritos em
+[agent-helper-lifecycle.md](agent-helper-lifecycle.md); o empacotamento/instalação unificada
+continuam para PR #21. Não são relaxadas verificações para viabilizar teste em pasta não confiável.
 
 ## Testes
 

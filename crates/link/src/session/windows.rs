@@ -15,6 +15,7 @@ use windows_sys::Win32::{
 };
 
 mod image_security;
+pub mod lifecycle;
 pub use image_security::trusted_image;
 use image_security::TrustedImage;
 
@@ -518,6 +519,13 @@ fn write_frame(pipe: HANDLE, mut bytes: Vec<u8>, deadline: Instant) -> Result<()
     io(pipe, &mut bytes, true, deadline)
 }
 pub fn exchange(request: &Request) -> Result<Response> {
+    exchange_checked(request, None)
+}
+/// Additional ownership binding for the service supervisor. All existing peer checks still run.
+pub fn exchange_owned(request: &Request, expected_pid: u32) -> Result<Response> {
+    exchange_checked(request, Some(expected_pid))
+}
+fn exchange_checked(request: &Request, expected_pid: Option<u32>) -> Result<Response> {
     request.validate(&request.session, chrono::Utc::now().timestamp_millis())?;
     let fresh = discover()?;
     if fresh != request.session {
@@ -551,6 +559,15 @@ pub fn exchange(request: &Request) -> Result<Response> {
             ErrorCode::SessionHelperUnavailable,
         )?;
         let _peer = authenticate_helper(pipe.0, &fresh)?;
+        if let Some(expected) = expected_pid {
+            let mut pid = 0;
+            if GetNamedPipeServerProcessId(pipe.0, &mut pid) == 0 || pid != expected {
+                return Err(error(
+                    ErrorCode::SessionPeerRejected,
+                    "Pipe fora do lifecycle atual",
+                ));
+            }
+        }
         write_frame(pipe.0, encode(request)?, deadline)?;
         let response: Response = serde_json::from_slice(&read_frame(pipe.0, deadline)?)
             .map_err(|_| error(ErrorCode::SessionInvalidRequest, "Resposta IPC inválida"))?;
@@ -567,6 +584,7 @@ pub fn exchange(request: &Request) -> Result<Response> {
     }
 }
 pub fn serve(mut executor: impl FnMut(&Operation, &Identity) -> Result<Data>) -> Result<()> {
+    lifecycle::verify_user_process()?;
     let identity = own_identity()?;
     if identity.session_id == 0 || identity.user_sid == "S-1-5-18" || identity.logon_sid.is_empty()
     {

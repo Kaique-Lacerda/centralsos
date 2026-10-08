@@ -1,3 +1,4 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 #[cfg(windows)]
 mod collector;
 fn main() {
@@ -8,7 +9,7 @@ fn main() {
     }
     #[cfg(windows)]
     if let Err(error) = central_sos_link::session::windows::serve(collector::bounded_collect) {
-        eprintln!("Session Helper encerrado: {error}");
+        eprintln!("Session Helper encerrado: {:?}", error.code);
         std::process::exit(1);
     }
     #[cfg(not(windows))]

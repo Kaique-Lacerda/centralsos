@@ -1,5 +1,10 @@
 # Session Helper: ACL Windows e teste local pelo SCM
 
+> Registro histórico da investigação e harness manual anteriores ao supervisor.
+> O lifecycle atual está em [agent-helper-lifecycle.md](agent-helper-lifecycle.md).
+> Executar o harness abaixo não comprova lançamento/recuperação pelo novo supervisor;
+> alterações reais do SCM/cópia de binários exigem autorização administrativa específica.
+
 ## Resultado da investigação
 
 Base: `main` / `cd21355` (merge do Session Helper). A instalação real e ambos os executáveis têm owner Administradores e usuários comuns com leitura/execução. Essas permissões passaram pela verificação nativa.
