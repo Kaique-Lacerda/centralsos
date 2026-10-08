@@ -43,3 +43,35 @@ test('lifecycle diagnostics contain finite states instead of identity, inventory
     assert.doesNotMatch(call, /user_sid|logon_sid|credential|payload|request|identity|pid|token/);
   }
 });
+
+test('administrative recovery retains authorization and Agent trust while install/start require Helper trust', async () => {
+  const installer = await read('crates/agent/src/service/installer.rs');
+  const link = await read('crates/link/src/session/windows/lifecycle.rs');
+  assert.match(installer, /fn requires_helper\(command: &str\)[\s\S]*?matches!\(command, "--install-service" \| "--start-service"\)/);
+  assert.match(installer, /authorize\(\)\?;\s*let agent = agent\(\)\?;/);
+  assert.match(installer, /if requires_helper\(command\)\s*\{\s*Some\(images\(\)\?\)/);
+  for (const required of ['installation_agent_image()', 'administrative_service_process',
+    'SCM_FOREIGN_CONFIGURATION_REJECTED', 'SCM_PROCESS_IDENTITY_REJECTED', 'recover(command, Some(&checked))'])
+    assert.ok(installer.includes(required), required);
+  const agentOnly = link.split('pub fn installation_agent_image()')[1].split('pub struct ServiceProcess')[0];
+  assert.match(agentOnly, /trusted_image\(&expected\)/);
+  assert.doesNotMatch(agentOnly, /HELPER_IMAGE|CreateProcess/);
+  assert.doesNotMatch(installer + link, /SetSecurityInfo\(|SetNamedSecurityInfo\(|icacls|TerminateProcess\(/);
+});
+
+test('quarantine checks Job disarm and retains handles on failure instead of unverified termination', async () => {
+  const source = await read('crates/link/src/session/windows/lifecycle.rs');
+  const disarm = source.split('fn disarm_job(')[1].split('fn release_handles(')[0];
+  for (const required of ['job.query()', 'job.set(&limits)', 'DisarmFailure::Query',
+    'DisarmFailure::Set', 'DisarmFailure::Confirm', 'LimitFlags &= !JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE'])
+    assert.ok(disarm.includes(required), required);
+  const retire = source.split('pub fn retire(&self)')[1].split('pub fn probe(')[0];
+  assert.ok(retire.indexOf('if let Err(rejected) = self.verify()') < retire.indexOf('TerminateJobObject('));
+  assert.match(retire, /self\.quarantine\(\);\s*return Err\(rejected\)/);
+  const drop = source.split('impl Drop for Child')[1].split('pub fn launch(')[0];
+  assert.match(drop, /finish_release\(decision/);
+  assert.match(drop, /retained_until_process_exit/);
+  assert.match(source, /process: ManuallyDrop<Handle>/);
+  assert.match(source, /job: ManuallyDrop<Handle>/);
+  assert.doesNotMatch(drop, /TerminateJobObject\(|TerminateProcess\(/);
+});

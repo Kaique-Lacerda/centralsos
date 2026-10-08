@@ -96,7 +96,11 @@ impl Platform for Native {
         })
     }
     fn retire(&mut self, child: &Self::Child) -> Result<()> {
-        child.retire()
+        let result = child.retire();
+        if let Some(state) = child.quarantine_state() {
+            crate::logging::event("helper_quarantine", serde_json::json!({"state": state}));
+        }
+        result
     }
     fn available(&mut self, child: Option<&Self::Child>) {
         if let Ok(mut permit) = gate().lock() {

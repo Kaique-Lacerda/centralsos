@@ -1,5 +1,6 @@
 //! Fixed-image launch under a verified non-elevated WTS token. No shell or caller-supplied path.
 use super::*;
+use std::{cell::Cell, mem::ManuallyDrop};
 use windows_sys::Win32::System::{Environment::*, JobObjects::*};
 
 pub const HELPER_IMAGE: &str = "central-sos-session-helper.exe";
@@ -94,6 +95,14 @@ pub fn administrative_installer() -> Result<()> {
     Ok(())
 }
 pub fn installation_images() -> Result<(TrustedImage, TrustedImage)> {
+    Ok((
+        installation_agent_image()?,
+        trusted_image(&expected_sibling(HELPER_IMAGE)?)?,
+    ))
+}
+/// Recovery still pins the administrative Agent and the complete trusted ACL chain.
+/// It deliberately does not open, trust or execute the Helper.
+pub fn installation_agent_image() -> Result<TrustedImage> {
     let current = std::env::current_exe()
         .map_err(|_| error(ErrorCode::SessionPeerRejected, "Imagem Agent indisponível"))?;
     let expected = expected_sibling(AGENT_IMAGE)?;
@@ -106,10 +115,30 @@ pub fn installation_images() -> Result<(TrustedImage, TrustedImage)> {
             "Imagem Agent divergente",
         ));
     }
-    Ok((
-        trusted_image(&expected)?,
-        trusted_image(&expected_sibling(HELPER_IMAGE)?)?,
-    ))
+    trusted_image(&expected)
+}
+
+/// Keep both the original SCM process handle and its trusted image pinned during recovery.
+pub struct ServiceProcess {
+    _process: Handle,
+    _image: TrustedImage,
+}
+pub fn administrative_service_process(pid: u32) -> Result<ServiceProcess> {
+    let (process, identity) = process_identity(pid)?;
+    if identity.user_sid != "S-1-5-18"
+        || identity.session_id != 0
+        || unsafe { GetProcessId(process.0) } != pid
+    {
+        return Err(error(
+            ErrorCode::SessionPeerRejected,
+            "Identidade SCM divergente",
+        ));
+    }
+    let image = check_image(process.0, &expected_sibling(AGENT_IMAGE)?)?;
+    Ok(ServiceProcess {
+        _process: process,
+        _image: image,
+    })
 }
 
 struct Environment(*mut c_void);
@@ -216,15 +245,111 @@ pub enum Probe {
     Starting,
     Exited,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DisarmFailure {
+    Query,
+    Set,
+    Confirm,
+}
+impl DisarmFailure {
+    fn code(self) -> &'static str {
+        match self {
+            Self::Query => "JOB_QUARANTINE_QUERY_FAILED",
+            Self::Set => "JOB_QUARANTINE_SET_FAILED",
+            Self::Confirm => "JOB_QUARANTINE_CONFIRM_FAILED",
+        }
+    }
+}
+trait JobLimits {
+    fn query(&mut self) -> std::result::Result<JOBOBJECT_EXTENDED_LIMIT_INFORMATION, ()>;
+    fn set(&mut self, limits: &JOBOBJECT_EXTENDED_LIMIT_INFORMATION)
+        -> std::result::Result<(), ()>;
+}
+struct NativeJob(HANDLE);
+impl JobLimits for NativeJob {
+    fn query(&mut self) -> std::result::Result<JOBOBJECT_EXTENDED_LIMIT_INFORMATION, ()> {
+        let mut limits = unsafe { zeroed() };
+        if unsafe {
+            QueryInformationJobObject(
+                self.0,
+                JobObjectExtendedLimitInformation,
+                (&mut limits as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                size_of_val(&limits) as u32,
+                null_mut(),
+            )
+        } == 0
+        {
+            Err(())
+        } else {
+            Ok(limits)
+        }
+    }
+    fn set(
+        &mut self,
+        limits: &JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+    ) -> std::result::Result<(), ()> {
+        if unsafe {
+            SetInformationJobObject(
+                self.0,
+                JobObjectExtendedLimitInformation,
+                (limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                size_of_val(limits) as u32,
+            )
+        } == 0
+        {
+            Err(())
+        } else {
+            Ok(())
+        }
+    }
+}
+fn disarm_job(job: &mut impl JobLimits) -> std::result::Result<(), DisarmFailure> {
+    // Read-modify-write: preserve ActiveProcessLimit, no-breakaway and all other limits.
+    let mut limits = job.query().map_err(|_| DisarmFailure::Query)?;
+    if limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE == 0 {
+        return Ok(());
+    }
+    limits.BasicLimitInformation.LimitFlags &= !JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    job.set(&limits).map_err(|_| DisarmFailure::Set)?;
+    let confirmed = job.query().map_err(|_| DisarmFailure::Confirm)?;
+    if confirmed.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE != 0 {
+        return Err(DisarmFailure::Confirm);
+    }
+    Ok(())
+}
+fn release_handles(
+    exited: bool,
+    verified: bool,
+    quarantined: bool,
+    job: &mut impl JobLimits,
+) -> std::result::Result<(), DisarmFailure> {
+    if exited || (verified && !quarantined) {
+        Ok(())
+    } else {
+        disarm_job(job)
+    }
+}
+fn finish_release(
+    decision: std::result::Result<(), DisarmFailure>,
+    release: impl FnOnce(),
+) -> std::result::Result<(), DisarmFailure> {
+    decision?;
+    release();
+    Ok(())
+}
 /// Not constructible by a PID from the network: only launch() owns process/job handles.
 pub struct Child {
-    process: Handle,
-    job: Handle,
+    // Explicit disposal: an armed, unverifiable job must not close during ordinary Drop.
+    process: ManuallyDrop<Handle>,
+    job: ManuallyDrop<Handle>,
     pid: u32,
     identity: Identity,
     startup_error: Option<SessionError>,
-    _agent_image: TrustedImage,
-    _helper_image: TrustedImage,
+    quarantined: Cell<bool>,
+    quarantine_failure: Cell<Option<DisarmFailure>>,
+    _agent_image: ManuallyDrop<TrustedImage>,
+    _helper_image: ManuallyDrop<TrustedImage>,
 }
 impl Child {
     pub fn pid(&self) -> u32 {
@@ -232,6 +357,18 @@ impl Child {
     }
     pub fn identity(&self) -> &Identity {
         &self.identity
+    }
+    pub fn quarantine_state(&self) -> Option<&'static str> {
+        self.quarantined.get().then(|| {
+            self.quarantine_failure
+                .get()
+                .map_or("JOB_QUARANTINE_DISARMED", DisarmFailure::code)
+        })
+    }
+    fn quarantine(&self) {
+        self.quarantined.set(true);
+        let result = disarm_job(&mut NativeJob(self.job.0));
+        self.quarantine_failure.set(result.err());
     }
     fn exited(&self) -> bool {
         unsafe { WaitForSingleObject(self.process.0, 0) == WAIT_OBJECT_0 }
@@ -258,7 +395,18 @@ impl Child {
         if self.exited() {
             return Ok(());
         }
-        self.verify()?;
+        if self.quarantined.get() {
+            return Err(error(
+                ErrorCode::SessionPeerRejected,
+                "Helper em quarentena",
+            ));
+        }
+        if let Err(rejected) = self.verify() {
+            // Revoke use and attempt disarm immediately, while the supervisor still holds handles.
+            // Never TerminateJobObject or TerminateProcess on failed identity verification.
+            self.quarantine();
+            return Err(rejected);
+        }
         unsafe {
             if TerminateJobObject(self.job.0, 0) == 0
                 || WaitForSingleObject(self.process.0, 2_000) != WAIT_OBJECT_0
@@ -320,20 +468,29 @@ impl Child {
 }
 impl Drop for Child {
     fn drop(&mut self) {
-        if !self.exited() && self.verify().is_err() {
-            // A compromised/foreign process is quarantined, never killed by name or PID.
-            // Disarm automatic termination; require administrative investigation.
-            unsafe {
-                let limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();
-                SetInformationJobObject(
-                    self.job.0,
-                    JobObjectExtendedLimitInformation,
-                    (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
-                    size_of_val(&limits) as u32,
-                );
-            }
+        let exited = self.exited();
+        let verified = !exited && !self.quarantined.get() && self.verify().is_ok();
+        let decision = release_handles(
+            exited,
+            verified,
+            self.quarantined.get(),
+            &mut NativeJob(self.job.0),
+        );
+        if let Err(failure) = finish_release(decision, || unsafe {
+            ManuallyDrop::drop(&mut self.process);
+            ManuallyDrop::drop(&mut self.job);
+            ManuallyDrop::drop(&mut self._helper_image);
+            ManuallyDrop::drop(&mut self._agent_image);
+        }) {
+            self.quarantine_failure.set(Some(failure));
+            // Intentionally retain process/job/image pins until OS process teardown. This prevents
+            // last-handle closure here, but cannot prevent it on an abrupt Agent exit. No adoption,
+            // identity bypass, explicit termination or unbounded relaunch after quarantine.
+            // Logging must not panic during another destructor/unwind.
+            use std::io::Write;
+            let _ = writeln!(std::io::stderr(), "{{\"event\":\"helper_quarantine\",\"state\":\"{}\",\"handles\":\"retained_until_process_exit\"}}", failure.code());
+            return;
         }
-        // Owned live children are killed when the last private job handle closes, including crashes.
     }
 }
 
@@ -463,13 +620,15 @@ pub fn launch(identity: &Identity) -> Result<Child> {
         drop(attributes);
         // Job assignment is atomic with creation, including Agent crashes before ResumeThread.
         let mut child = Child {
-            process,
-            job,
+            process: ManuallyDrop::new(process),
+            job: ManuallyDrop::new(job),
             pid: created.dwProcessId,
             identity: identity.clone(),
             startup_error: None,
-            _agent_image: agent_image,
-            _helper_image: helper_image,
+            quarantined: Cell::new(false),
+            quarantine_failure: Cell::new(None),
+            _agent_image: ManuallyDrop::new(agent_image),
+            _helper_image: ManuallyDrop::new(helper_image),
         };
         // Once created, always transfer ownership to the supervisor, including failed verification.
         // It can retire a verified child or quarantine it without losing the handle and retrying
@@ -488,6 +647,10 @@ pub fn launch(identity: &Identity) -> Result<Child> {
         Ok(child)
     }
 }
+
+#[cfg(test)]
+#[path = "lifecycle/quarantine_tests.rs"]
+mod quarantine_tests;
 
 #[cfg(test)]
 mod tests {

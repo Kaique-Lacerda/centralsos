@@ -83,6 +83,119 @@ fn wait_stopped(service: &Service) -> Result<(), String> {
         std::thread::sleep(Duration::from_millis(100));
     }
 }
+
+fn requires_helper(command: &str) -> bool {
+    matches!(command, "--install-service" | "--start-service")
+}
+fn authorize_images<A, H>(
+    command: &str,
+    authorize: impl FnOnce() -> Result<(), String>,
+    agent: impl FnOnce() -> Result<A, String>,
+    images: impl FnOnce() -> Result<H, String>,
+) -> Result<(A, Option<H>), String> {
+    authorize()?;
+    let agent = agent()?;
+    let helper = if requires_helper(command) {
+        Some(images()?)
+    } else {
+        None
+    };
+    Ok((agent, helper))
+}
+
+// The recovery controller is shared by the real SCM adapter and failure-injection tests.
+// No automatic rollback: an interrupted provisioning step leaves an inspectable installation.
+trait RecoveryService {
+    type Guard;
+    fn verify(&self) -> Result<(ServiceState, Self::Guard), String>;
+    fn stop(&self) -> Result<(), String>;
+    fn wait_stopped(&self) -> Result<(), String>;
+    fn delete(&self) -> Result<(), String>;
+}
+struct CheckedService<'a> {
+    service: &'a Service,
+    image: &'a std::path::Path,
+}
+impl RecoveryService for CheckedService<'_> {
+    type Guard = Option<win::ServiceProcess>;
+    fn verify(&self) -> Result<(ServiceState, Self::Guard), String> {
+        let config = scm(self.service.query_config())?;
+        if !matches_install(&config, self.image) {
+            return Err("SCM_FOREIGN_CONFIGURATION_REJECTED".into());
+        }
+        let status = scm(self.service.query_status())?;
+        if status.service_type != ServiceType::OWN_PROCESS {
+            return Err("SCM_FOREIGN_CONFIGURATION_REJECTED".into());
+        }
+        let pid = status.process_id.filter(|pid| *pid != 0);
+        if (status.current_state == ServiceState::Stopped && pid.is_some())
+            || (status.current_state == ServiceState::Running && pid.is_none())
+        {
+            return Err("SCM_PROCESS_IDENTITY_REJECTED".into());
+        }
+        let process = pid
+            .map(win::administrative_service_process)
+            .transpose()
+            .map_err(|_| "SCM_PROCESS_IDENTITY_REJECTED")?;
+        Ok((status.current_state, process))
+    }
+    fn stop(&self) -> Result<(), String> {
+        scm(self.service.stop()).map(|_| ())
+    }
+    fn wait_stopped(&self) -> Result<(), String> {
+        wait_stopped(self.service)
+    }
+    fn delete(&self) -> Result<(), String> {
+        scm(self.service.delete())
+    }
+}
+
+fn recover<S: RecoveryService>(command: &str, service: Option<&S>) -> Result<String, String> {
+    if !matches!(
+        command,
+        "--stop-service" | "--uninstall-service" | "--service-status"
+    ) {
+        return Err("INSTALL_ARGUMENTS_REJECTED".into());
+    }
+    let Some(service) = service else {
+        return Ok("Absent".into());
+    };
+    // Pin any running SCM process through the operation; never act on a caller-provided PID.
+    let (state, _process) = service.verify()?;
+    match command {
+        "--service-status" => return Ok(format!("{state:?}")),
+        "--uninstall-service" => {
+            if state != ServiceState::Stopped {
+                return Err("SCM_STOP_REQUIRED".into());
+            }
+            let (fresh, _guard) = service.verify()?;
+            if fresh != ServiceState::Stopped {
+                return Err("SCM_STOP_REQUIRED".into());
+            }
+            service.delete()?;
+            return Ok("Absent".into());
+        }
+        "--stop-service" => match state {
+            ServiceState::Running => {
+                let (fresh, _guard) = service.verify()?;
+                if fresh != ServiceState::Running {
+                    return Err("SCM_TRANSITION_REJECTED".into());
+                }
+                service.stop()?;
+                service.wait_stopped()?;
+            }
+            ServiceState::StopPending => service.wait_stopped()?,
+            ServiceState::Stopped => {}
+            _ => return Err("SCM_TRANSITION_REJECTED".into()),
+        },
+        _ => unreachable!(),
+    }
+    let (fresh, _guard) = service.verify()?;
+    if fresh != ServiceState::Stopped {
+        return Err("SCM_STOP_REQUIRED".into());
+    }
+    Ok("Stopped".into())
+}
 pub fn installer_command() -> Result<(), String> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     if args.len() != 1 {
@@ -100,8 +213,12 @@ pub fn installer_command() -> Result<(), String> {
     {
         return Err("INSTALL_ARGUMENTS_REJECTED".into());
     }
-    win::administrative_installer().map_err(|_| "INSTALL_ADMIN_REQUIRED")?;
-    let _images = win::installation_images().map_err(|_| "INSTALL_TRUST_REJECTED")?;
+    let _images = authorize_images(
+        command,
+        || win::administrative_installer().map_err(|_| "INSTALL_ADMIN_REQUIRED".into()),
+        || win::installation_agent_image().map_err(|_| "INSTALL_TRUST_REJECTED".into()),
+        || win::installation_images().map_err(|_| "INSTALL_TRUST_REJECTED".into()),
+    )?;
     let expected = configuration()?;
     let manager = scm(ServiceManager::local_computer(
         None::<&str>,
@@ -126,14 +243,31 @@ pub fn installer_command() -> Result<(), String> {
         Err(error) if missing(&error) && command == "--install-service" => {
             scm(manager.create_service(&expected, access))?
         }
-        Err(error) if missing(&error) && command == "--uninstall-service" => return Ok(()),
+        Err(error) if missing(&error) && !requires_helper(command) => {
+            let state = recover::<CheckedService<'_>>(command, None)?;
+            if command == "--service-status" {
+                println!("{}", serde_json::json!({"service":NAME,"state":state}));
+            }
+            return Ok(());
+        }
         Err(_) => return Err("SCM_SERVICE_UNAVAILABLE".into()),
     };
+    let checked = CheckedService {
+        service: &service,
+        image: &expected.executable_path,
+    };
+    if !requires_helper(command) {
+        let state = recover(command, Some(&checked))?;
+        if command == "--service-status" {
+            println!("{}", serde_json::json!({"service":NAME,"state":state}));
+        }
+        return Ok(());
+    }
+    let (state, _process) = checked.verify()?;
     let config = scm(service.query_config())?;
     if !matches_install(&config, &expected.executable_path) {
         return Err("SCM_FOREIGN_CONFIGURATION_REJECTED".into());
     }
-    let state = scm(service.query_status())?.current_state;
     match command {
         "--install-service" => {
             if state != ServiceState::Stopped {
@@ -150,24 +284,8 @@ pub fn installer_command() -> Result<(), String> {
             scm(service.update_failure_actions(recovery()))?;
             scm(service.set_failure_actions_on_non_crash_failures(true))?;
         }
-        "--uninstall-service" => {
-            if state != ServiceState::Stopped {
-                return Err("SCM_STOP_REQUIRED".into());
-            }
-            scm(service.delete())?;
-        }
         "--start-service" if state == ServiceState::Stopped => scm(service.start::<OsString>(&[]))?,
         "--start-service" if state == ServiceState::Running => {}
-        "--stop-service" if state == ServiceState::Running => {
-            scm(service.stop())?;
-            wait_stopped(&service)?;
-        }
-        "--stop-service" if state == ServiceState::StopPending => wait_stopped(&service)?,
-        "--stop-service" if state == ServiceState::Stopped => {}
-        "--service-status" => println!(
-            "{}",
-            serde_json::json!({"service":NAME,"state":format!("{state:?}")})
-        ),
         _ => return Err("SCM_TRANSITION_REJECTED".into()),
     }
     Ok(())
@@ -220,13 +338,24 @@ mod tests {
             display_name: NAME.into(),
         };
         assert!(matches_install(&config, &image));
+        config.executable_path = PathBuf::from(r"C:\OtherInstallation\central-sos-agent.exe");
+        assert!(!matches_install(&config, &image));
         config.executable_path = PathBuf::from(format!("\"{}\" --arbitrary", image.display()));
         assert!(!matches_install(&config, &image));
         config.executable_path = image.clone();
         config.account_name = Some("user".into());
         assert!(!matches_install(&config, &image));
         config.account_name = Some("LocalSystem".into());
+        config
+            .dependencies
+            .push(ServiceDependency::Service("ForeignService".into()));
+        assert!(!matches_install(&config, &image));
+        config.dependencies.clear();
         config.service_type = ServiceType::SHARE_PROCESS;
         assert!(!matches_install(&config, &image));
     }
 }
+
+#[cfg(test)]
+#[path = "installer/recovery_tests.rs"]
+mod recovery_tests;
