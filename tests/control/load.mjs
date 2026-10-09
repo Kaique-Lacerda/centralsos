@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 export async function load(entry) {
-  const bundle = await build({ entryPoints: [resolve(entry)], bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', packages: 'external', loader: { '.css': 'empty' }, write: false });
+  const bundle = await build({ entryPoints: [resolve(entry)], bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', packages: 'external', loader: { '.css': 'empty', '.webp': 'dataurl' }, write: false });
   const directory = resolve('.control-build'); await mkdir(directory, { recursive: true });
   const file = resolve(directory, `test-${randomUUID()}.mjs`);
   await writeFile(file, bundle.outputFiles[0].contents);
