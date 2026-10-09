@@ -11,7 +11,7 @@ import { load } from './load.mjs';
 const products = ['client', 'support', 'web'];
 const graphs = Object.fromEntries(await Promise.all(products.map(async product => {
     const bundle = await build({ entryPoints: [`src/apps/${product}/main.tsx`], bundle: true,
-        platform: 'browser', format: 'esm', jsx: 'automatic', loader: { '.css': 'empty' },
+        platform: 'browser', format: 'esm', jsx: 'automatic', loader: { '.css': 'empty', '.webp': 'dataurl' },
         metafile: true, write: false });
     return [product, Object.keys(bundle.metafile.inputs).map(path => path.replaceAll('\\', '/'))];
 })));
@@ -90,11 +90,15 @@ test('rotas são próprias: /control somente no Suporte, rotas públicas não si
         }
         if (product === 'web') {
             for (const path of ['/settings', '/validation', '/tools/printer-diagnostic']) assert.equal(leaf(path).path, '*');
-            assert.equal(leaf('/download/client').element.type.name, 'ClientDownloadPage');
-            assert.equal(leaf('/download/support').element.type.name, 'SupportDownloadPage');
-            assert.equal(leaf('/tools').element.type.name, 'ToolsCatalogPage');
-            assert.equal(leaf('/download').element.props.to, '/download/client');
-            assert.equal(leaf('/installations').element.props.to, '/tools');
+            assert.equal(leaf('/').element.type.name, 'PortalHome');
+            for (const path of ['/download/client', '/download/support', '/download']) {
+                assert.equal(leaf(path).element.type, Navigate);
+                assert.equal(leaf(path).element.props.to, '/#downloads');
+            }
+            for (const path of ['/tools', '/installations']) {
+                assert.equal(leaf(path).element.type, Navigate);
+                assert.equal(leaf(path).element.props.to, '/#tools');
+            }
         }
         if (product === 'client') {
             for (const path of ['/settings', '/validation', '/installations', '/tools/printer-diagnostic']) assert.notEqual(leaf(path).path, '*');
@@ -105,7 +109,11 @@ test('rotas são próprias: /control somente no Suporte, rotas públicas não si
 test('portal distingue os produtos; Suporte indisponível não reutiliza instalador do Cliente', async () => {
     const { PortalHome, SupportDownloadPage } = await load('src/apps/web/PortalPages.tsx');
     const home = renderToStaticMarkup(createElement(StaticRouter, {}, createElement(PortalHome)));
-    for (const path of ['/download/client', '/download/support', '/tools']) assert.ok(home.includes(`href="${path}"`));
+    assert.match(home, /Baixar Cliente/);
+    assert.match(home, /Baixar Suporte/);
+    assert.match(home, /id="tools"/);
+    assert.match(home, /Ferramentas/);
+    assert.doesNotMatch(home, /href="\/download\/(?:client|support)"|href="\/tools"/);
     assert.doesNotMatch(home, /href="\/control"|href="\/settings"/);
     const support = renderToStaticMarkup(createElement(SupportDownloadPage));
     assert.match(support, /Em desenvolvimento/);

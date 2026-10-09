@@ -1,16 +1,15 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { Outlet } from 'react-router-dom';
 import { getProductRuntime } from '../product';
+import emblem from './assets/emblem-brand.webp';
 import './portal.css';
 
 const runtime = getProductRuntime('web', 'web');
-const links = [['/', 'Início'], ['/download/client', 'Baixar Cliente'], ['/download/support', 'Baixar Suporte'], ['/tools', 'Ferramentas homologadas']] as const;
 export function WebShell() {
     return <div className="public-portal" data-product={runtime.product} data-runtime={runtime.identity}>
-        <header className="portal-header"><div className="brand"><div className="brand-mark"><Activity size={19} /></div><div><strong>CENTRAL SOS</strong><small>Downloads oficiais</small></div></div>
-            <nav aria-label="Portal CENTRAL SOS">{links.map(([path, label]) => <NavLink key={path} end={path === '/'} to={path}>{label}</NavLink>)}</nav>
+        <a className="portal-skip-link" href="#portal-main">Pular para o conteúdo</a>
+        <header className="portal-header"><div className="portal-container"><a className="portal-brand" href="/" aria-label="CENTRAL SOS — início"><img src={emblem} alt="" width="46" height="46" /><strong>CENTRAL <span>SOS</span></strong></a></div>
         </header>
-        <main className="page"><Outlet /></main>
+        <main id="portal-main" tabIndex={-1}><Outlet /></main>
         <footer className="portal-footer">CENTRAL SOS · Distribuição de aplicativos e ferramentas homologadas</footer>
     </div>;
 }

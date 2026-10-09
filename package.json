@@ -21,6 +21,7 @@
     "test:diagnosis": "node --test src/services/diagnosis/tests/*.test.mjs",
     "test:validation": "node --test src/services/validation/tests/*.test.mjs src/services/printers/tests/*.test.mjs src/services/network/tests/*.test.mjs src/services/releases/tests/*.test.mjs src/services/windows/tests/*.test.mjs src/services/windows-services/tests/*.test.mjs src/services/support/tests/*.test.mjs src/pages/tests/*.test.mjs",
     "test:tools": "node --test src/services/tools/tests/*.test.mjs",
+    "test:web": "node --test src/apps/web/tests/*.test.mjs tests/control/ProductArchitecture.test.mjs",
     "test:control": "node --test tests/control/*.test.mjs",
     "control:dev": "node scripts/control-server.mjs",
     "control:admin": "node scripts/control-admin.mjs",
