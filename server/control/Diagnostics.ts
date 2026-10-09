@@ -16,6 +16,12 @@ export function diagnosticCode(error: unknown): string {
     }
     const code = (error as { code?: unknown })?.code;
     if (code === '42P01') return 'MIGRATION_REQUIRED';
+    if (code === '42601') return 'DATABASE_SQL_SYNTAX_ERROR';
+    if (code === '42501') return 'DATABASE_PERMISSION_DENIED';
+    if (code === '42703') return 'DATABASE_SCHEMA_MISMATCH';
+    if (code === '42P07' || code === '42701') return 'DATABASE_SCHEMA_CONFLICT';
+    if (typeof code === 'string' && /^23[A-Z0-9]{3}$/.test(code)) return 'DATABASE_CONSTRAINT_VIOLATION';
+    if (typeof code === 'string' && /^40[A-Z0-9]{3}$/.test(code)) return 'DATABASE_TRANSACTION_FAILURE';
     if (code === '57014' || code === '55P03') return 'DATABASE_TIMEOUT';
     if (typeof code === 'string' && (/^(08|28)/.test(code) || ['ECONNREFUSED', 'ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT'].includes(code))) return 'DATABASE_UNAVAILABLE';
     return 'BACKEND_FAILURE';

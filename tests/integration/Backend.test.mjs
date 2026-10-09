@@ -51,8 +51,8 @@ test('integração PostgreSQL real + duas instâncias HTTPS + OIDC controlado', 
         await owner.query('CREATE SCHEMA ' + schema); created = true;
         await t.test('1 migrações ordenadas, atômicas e idempotentes entre instâncias', async () => {
             const results = await Promise.all([a.applyMigrations(pool1, migrations, false), a.applyMigrations(pool2, migrations, false)]);
-            assert.equal(results.reduce((sum, row) => sum + row.pending.length, 0), 3);
-            assert.equal((await pool1.query('SELECT count(*)::int AS count FROM control_schema_migrations')).rows[0].count, 3);
+            assert.equal(results.reduce((sum, row) => sum + row.pending.length, 0), migrations.length);
+            assert.equal((await pool1.query('SELECT count(*)::int AS count FROM control_schema_migrations')).rows[0].count, migrations.length);
             await assert.rejects(a.applyMigrations(pool1, migrations.map((m, i) => i === 0 ? { ...m, checksum: '0'.repeat(64) } : m), false), error => error.code === 'MIGRATION_DIVERGENT');
         });
         await t.test('2 provisionamento dry-run, idempotência, auditoria e papel explícito', async () => {

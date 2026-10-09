@@ -88,9 +88,10 @@ npm.cmd run control:admin -- migrate --apply
 npm.cmd run control:admin -- diagnose
 ```
 
-Dry-run é o padrão sem `--apply`. Catálogo fixo: 001, 002, 003. Os arquivos
-originais conservam seu conteúdo. O executor remove somente seus envelopes
-BEGIN/COMMIT e mantém **DDL + ledger na mesma transação**. SHA-256 usa UTF-8 com
+Dry-run é o padrão sem `--apply`. Ele verifica histórico/tabelas, **não executa
+nem valida a sintaxe do SQL pendente**. Catálogo fixo: 001, 002, 003, 004.
+O executor remove os envelopes BEGIN/COMMIT e mantém
+**DDL + ledger na mesma transação**. SHA-256 usa UTF-8 com
 CRLF normalizado para LF, garantindo o mesmo checksum em Windows/Linux.
 
 `control_schema_migrations` registra versão, arquivo, checksum e data; recusa
@@ -109,6 +110,62 @@ essa reconciliação é manual, não há flag de bypass. Se não for possível c
 o estado, restaure backup conhecido ou use banco novo isolado, preservando o legado.
 Migração divergente exige investigação/restauração do arquivo correto ou nova
 migração incremental; nunca reescrever checksum para esconder mudança de SQL.
+
+### Correção da coluna reservada `window` / reaplicação segura
+
+PostgreSQL reserva `WINDOW`. A 001 original usava esse identificador sem aspas;
+`--apply` falhava com SQLSTATE `42601`, mesmo após dry-run aprovado.
+A 001 corrigida cria `window_start`; 004 renomeia `"window"` em instalações
+rastreadas existentes, preservando os contadores, ou não altera a tabela nova.
+Se as duas colunas coexistirem ou nenhuma existir, 004 recusa e reverte o lote.
+
+Compatibilidade é restrita ao par de SHA-256 normalizados de **001_control.sql**:
+
+- predecessor: `7ee5b61d78dd7865d7d1874aa226fae056559b25d65093f835409290f936e255`;
+- corrigida: `ef18cc36bc427b2556889440244642d052b2ebbe348164fd1e6bf47101358168`.
+
+O executor reconhece o checksum predecessor somente quando o arquivo esperado
+é exatamente a correção revisada. **Nenhuma linha/checksum/data já aplicada é
+reescrita**, e 002/003 continuam intactas. Outros checksums são recusados.
+Reconhecer esse predecessor não afirma que seu SQL original inválido foi
+executado: instalações manuais com coluna entre aspas exigem a reconciliação
+independente descrita acima, nunca inserir o checksum cegamente no ledger.
+
+Procedimento para o proprietário/DBA autorizado (não executado automaticamente):
+
+1. Faça backup e confira o ledger e a estrutura, sem divulgar credenciais.
+2. Use o código administrativo corrigido. Mantenha o runtime de enrollment
+   suspenso durante a migração; ative sua versão corrigida somente após o sucesso.
+3. Execute `npm.cmd run control:admin -- migrate --dry-run` com a configuração
+   administrativa protegida. Banco cujo lote falhou integralmente deve mostrar
+   001–004 pendentes; banco rastreado atualizado até 003 deve mostrar apenas 004.
+4. Após revisão/autorização, execute `npm.cmd run control:admin -- migrate --apply`.
+5. Execute dry-run/`diagnose` novamente: nenhuma migração deve estar pendente.
+   Repetir `--apply` não reaplica SQL nem altera checksums.
+
+Se houver schema sem ledger, checksum divergente ou duas colunas, pare para
+reconciliação pelo DBA; não apague tabelas nem use bypass. A migração antiga
+falha dentro da transação; não precisa remover tabelas após rollback confirmado.
+
+Erros SQL agora têm códigos seguros: `DATABASE_SQL_SYNTAX_ERROR` (42601),
+`DATABASE_PERMISSION_DENIED` (42501), `DATABASE_SCHEMA_MISMATCH` (42703),
+`DATABASE_SCHEMA_CONFLICT` (42P07/42701), `DATABASE_CONSTRAINT_VIOLATION` (classe
+23) e `DATABASE_TRANSACTION_FAILURE` (classe 40). O CLI imprime somente o código,
+sem mensagem PostgreSQL, SQL, detalhes de linha, URL ou credenciais.
+
+Teste PostgreSQL real, exclusivamente local/descartável:
+
+```powershell
+$env:CONTROL_TEST_POSTGRES_BIN = '<diretorio-local-dos-binarios-PostgreSQL>'
+node --test tests/integration/Migrations.test.mjs
+```
+
+O teste inicia um cluster novo autenticado em `127.0.0.1`, em porta livre,
+confirma a identidade do diretório de dados, cria banco/schema de teste e encerra
+o processo ao terminar. Não registra serviço Windows nem lê URLs de bancos
+existentes. Arquivos temporários ficam em `.control-build/`, ignorado pelo Git.
+Sem os binários explicitamente configurados, a suíte informa skip; os testes
+unitários continuam disponíveis em `npm.cmd run test:control`.
 
 Se houver falha, o lote inteiro reverte. Corrija a causa e rode dry-run novamente.
 Não inclua migrações no startup da API/build/CI nem rode automaticamente em produção.

@@ -60,10 +60,10 @@ test('catálogo de migrações fixo, checksums estáveis em LF/CRLF e sem transa
     assert.deepEqual((await a.readMigrations(directory)).map(m => m.checksum), migrations.map(m => m.checksum));
 });
 test('migrações dry-run não executa DDL; aplicação mantém ordem, ledger e commit atômico', async () => {
-    let d = database(); const result = await a.applyMigrations(d.pool, migrations); assert.equal(result.pending.length, 3);
+    let d = database(); const result = await a.applyMigrations(d.pool, migrations); assert.equal(result.pending.length, migrations.length);
     assert.ok(!d.calls.some(c => /CREATE TABLE|INSERT INTO/.test(c.sql))); assert.equal(d.calls.at(-2).sql, 'ROLLBACK');
     d = database(); await a.applyMigrations(d.pool, migrations, false);
-    const inserted = d.calls.filter(c => c.sql.startsWith('INSERT INTO control_schema_migrations')); assert.deepEqual(inserted.map(c => c.values[0]), [1, 2, 3]);
+    const inserted = d.calls.filter(c => c.sql.startsWith('INSERT INTO control_schema_migrations')); assert.deepEqual(inserted.map(c => c.values[0]), migrations.map(m => m.version));
     assert.equal(d.calls[0].sql, 'BEGIN'); assert.match(d.calls[1].sql, /pg_advisory_xact_lock/); assert.equal(d.calls.at(-2).sql, 'COMMIT');
 });
 test('migrações já aplicadas não repetem SQL; divergência, ordem desconhecida e legado falham', async () => {
@@ -74,6 +74,29 @@ test('migrações já aplicadas não repetem SQL; divergência, ordem desconheci
 });
 test('falha de SQL causa rollback e libera conexão sem commit', async () => {
     const d = database({ fail: 'CREATE TABLE central_sos_control_state' }); await assert.rejects(a.applyMigrations(d.pool, migrations, false)); assert.equal(d.calls.at(-2).sql, 'ROLLBACK'); assert.equal(d.calls.at(-1).sql, 'RELEASE'); assert.ok(!d.calls.some(c => c.sql === 'COMMIT'));
+});
+test('checksum original de 001 é reconhecido sem reescrever ledger; exceção é estritamente limitada', async () => {
+    const original = '7ee5b61d78dd7865d7d1874aa226fae056559b25d65093f835409290f936e255';
+    const applied = migrations.slice(0, 3).map((m, i) => i === 0 ? { ...m, checksum: original } : m);
+    const d = database({ applied, present: tables });
+    const result = await a.applyMigrations(d.pool, migrations, false);
+    assert.deepEqual(result.pending, ['004_enrollment_window_start.sql']);
+    assert.deepEqual(d.calls.filter(c => c.sql.startsWith('INSERT INTO control_schema_migrations')).map(c => c.values[0]), [4]);
+    assert.ok(!d.calls.some(c => c.sql.startsWith('UPDATE control_schema_migrations')));
+    const changed = migrations.map((m, i) => i === 0 ? { ...m, checksum: 'f'.repeat(64) } : m);
+    await assert.rejects(a.applyMigrations(database({ applied, present: tables }).pool, changed, false), deny('MIGRATION_DIVERGENT'));
+    for (const index of [1, 2]) {
+        const wrong = applied.map((m, i) => i === index ? { ...m, checksum: original } : m);
+        await assert.rejects(a.applyMigrations(database({ applied: wrong, present: tables }).pool, migrations, false), deny('MIGRATION_DIVERGENT'));
+    }
+});
+test('diagnóstico SQL usa códigos finitos sem mensagem, query, detalhe ou credenciais', () => {
+    const cases = { '42601': 'DATABASE_SQL_SYNTAX_ERROR', '42501': 'DATABASE_PERMISSION_DENIED', '42703': 'DATABASE_SCHEMA_MISMATCH', '42701': 'DATABASE_SCHEMA_CONFLICT', '42P07': 'DATABASE_SCHEMA_CONFLICT', '23505': 'DATABASE_CONSTRAINT_VIOLATION', '40001': 'DATABASE_TRANSACTION_FAILURE', 'XX000': 'BACKEND_FAILURE' };
+    for (const [code, expected] of Object.entries(cases)) {
+        const error = Object.assign(new Error('SELECT private postgres://user:secret@host/db'), { code, detail: 'private row', query: 'private SQL' });
+        assert.equal(a.diagnosticCode(error), expected);
+        assert.doesNotMatch(JSON.stringify(a.safeRequestDiagnostic('/api/agent/enroll', error)), /secret|SELECT|postgres:|private/);
+    }
 });
 test('provisionamento valida UUID/subject/papel e recusa campos não previstos', async () => {
     assert.equal(a.provisioningSchema.parse({ ...data, company: { ...data.company, id: data.company.id.toUpperCase() } }).company.id, data.company.id);
