@@ -1,5 +1,10 @@
 # Releases e atualização do Desktop
 
+O instalador oficial do Cliente agora entrega também Agent e Session Helper, via hooks
+NSIS por máquina. Consulte [Instalador integrado](client-agent-installer.md) para staging,
+inspeção do pacote, upgrade/rollback e retenção de dados. A workflow verifica os três PEs
+no `.exe` final antes de publicar; MSI não é distribuído nesta etapa.
+
 ## Causa e configuração
 
 O bundler lê `plugins.updater` antes de iniciar a aplicação. A configuração anterior

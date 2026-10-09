@@ -11,14 +11,18 @@ use windows_service::{
     Error,
 };
 
+#[cfg(test)]
 fn configuration() -> Result<ServiceInfo, String> {
+    configuration_at(std::env::current_exe().map_err(|_| "INSTALL_IMAGE_UNAVAILABLE")?)
+}
+fn configuration_at(image: std::path::PathBuf) -> Result<ServiceInfo, String> {
     Ok(ServiceInfo {
         name: NAME.into(),
         display_name: "CENTRAL SOS Agent".into(),
         service_type: ServiceType::OWN_PROCESS,
         start_type: ServiceStartType::AutoStart,
         error_control: ServiceErrorControl::Normal,
-        executable_path: std::env::current_exe().map_err(|_| "INSTALL_IMAGE_UNAVAILABLE")?,
+        executable_path: image,
         launch_arguments: vec![],
         dependencies: vec![],
         account_name: None,
@@ -111,6 +115,9 @@ trait RecoveryService {
     fn stop(&self) -> Result<(), String>;
     fn wait_stopped(&self) -> Result<(), String>;
     fn delete(&self) -> Result<(), String>;
+    fn wait_process_exit(&self, _guard: &Self::Guard) -> Result<(), String> {
+        Ok(())
+    }
 }
 struct CheckedService<'a> {
     service: &'a Service,
@@ -134,7 +141,7 @@ impl RecoveryService for CheckedService<'_> {
             return Err("SCM_PROCESS_IDENTITY_REJECTED".into());
         }
         let process = pid
-            .map(win::administrative_service_process)
+            .map(|pid| win::administrative_service_process_at(pid, self.image))
             .transpose()
             .map_err(|_| "SCM_PROCESS_IDENTITY_REJECTED")?;
         Ok((status.current_state, process))
@@ -147,6 +154,14 @@ impl RecoveryService for CheckedService<'_> {
     }
     fn delete(&self) -> Result<(), String> {
         scm(self.service.delete())
+    }
+    fn wait_process_exit(&self, guard: &Self::Guard) -> Result<(), String> {
+        if let Some(process) = guard {
+            process
+                .wait_exit()
+                .map_err(|_| "SCM_PROCESS_EXIT_TIMEOUT")?;
+        }
+        Ok(())
     }
 }
 
@@ -194,6 +209,7 @@ fn recover<S: RecoveryService>(command: &str, service: Option<&S>) -> Result<Str
     if fresh != ServiceState::Stopped {
         return Err("SCM_STOP_REQUIRED".into());
     }
+    service.wait_process_exit(&_process)?;
     Ok("Stopped".into())
 }
 pub fn installer_command() -> Result<(), String> {
@@ -202,6 +218,34 @@ pub fn installer_command() -> Result<(), String> {
         return Err("INSTALL_ARGUMENTS_REJECTED".into());
     }
     let command = args[0].to_str().ok_or("INSTALL_ARGUMENTS_REJECTED")?;
+    if [
+        "--installer-prepare",
+        "--installer-commit",
+        "--installer-rollback",
+        "--installer-uninstall",
+        "--installer-status",
+    ]
+    .contains(&command)
+    {
+        return crate::installation::native::execute(command);
+    }
+    if ![
+        "--install-service",
+        "--uninstall-service",
+        "--start-service",
+        "--stop-service",
+        "--service-status",
+    ]
+    .contains(&command)
+    {
+        return Err("INSTALL_ARGUMENTS_REJECTED".into());
+    }
+    run_service_command(
+        command,
+        &std::env::current_exe().map_err(|_| "INSTALL_IMAGE_UNAVAILABLE")?,
+    )
+}
+pub(crate) fn run_service_command(command: &str, image: &std::path::Path) -> Result<(), String> {
     if ![
         "--install-service",
         "--uninstall-service",
@@ -219,7 +263,7 @@ pub fn installer_command() -> Result<(), String> {
         || win::installation_agent_image().map_err(|_| "INSTALL_TRUST_REJECTED".into()),
         || win::installation_images().map_err(|_| "INSTALL_TRUST_REJECTED".into()),
     )?;
-    let expected = configuration()?;
+    let expected = configuration_at(image.into())?;
     let manager = scm(ServiceManager::local_computer(
         None::<&str>,
         ServiceManagerAccess::CONNECT
@@ -287,6 +331,108 @@ pub fn installer_command() -> Result<(), String> {
         "--start-service" if state == ServiceState::Stopped => scm(service.start::<OsString>(&[]))?,
         "--start-service" if state == ServiceState::Running => {}
         _ => return Err("SCM_TRANSITION_REJECTED".into()),
+    }
+    Ok(())
+}
+pub(crate) fn observe_service(
+    image: &std::path::Path,
+) -> Result<crate::installation::ServiceSnapshot, String> {
+    use crate::installation::{ServiceSnapshot, StartMode, State};
+    let manager = scm(ServiceManager::local_computer(
+        None::<&str>,
+        ServiceManagerAccess::CONNECT,
+    ))?;
+    let service = match manager.open_service(
+        NAME,
+        ServiceAccess::QUERY_CONFIG | ServiceAccess::QUERY_STATUS,
+    ) {
+        Ok(service) => service,
+        Err(error) if missing(&error) => {
+            return Ok(ServiceSnapshot {
+                state: State::Absent,
+                start_mode: None,
+            })
+        }
+        Err(_) => return Err("SCM_SERVICE_UNAVAILABLE".into()),
+    };
+    let checked = CheckedService {
+        service: &service,
+        image,
+    };
+    let (state, _process) = checked.verify()?;
+    let config = scm(service.query_config())?;
+    if !matches_install(&config, image) {
+        return Err("SCM_FOREIGN_CONFIGURATION_REJECTED".into());
+    }
+    let start_mode = match config.start_type {
+        ServiceStartType::AutoStart => StartMode::Automatic,
+        ServiceStartType::OnDemand => StartMode::Manual,
+        ServiceStartType::Disabled => StartMode::Disabled,
+        _ => return Err("SCM_FOREIGN_CONFIGURATION_REJECTED".into()),
+    };
+    let state = match state {
+        ServiceState::Stopped => State::Stopped,
+        ServiceState::Running => State::Running,
+        _ => return Err("SCM_TRANSITION_PENDING".into()),
+    };
+    Ok(ServiceSnapshot {
+        state,
+        start_mode: Some(start_mode),
+    })
+}
+pub(crate) fn set_start_mode(
+    image: &std::path::Path,
+    mode: crate::installation::StartMode,
+) -> Result<(), String> {
+    win::administrative_installer().map_err(|_| "INSTALL_ADMIN_REQUIRED")?;
+    let _agent = win::installation_agent_image().map_err(|_| "INSTALL_TRUST_REJECTED")?;
+    let manager = scm(ServiceManager::local_computer(
+        None::<&str>,
+        ServiceManagerAccess::CONNECT,
+    ))?;
+    let service = match manager.open_service(
+        NAME,
+        ServiceAccess::QUERY_CONFIG | ServiceAccess::QUERY_STATUS | ServiceAccess::CHANGE_CONFIG,
+    ) {
+        Ok(service) => service,
+        Err(error) if missing(&error) => return Ok(()),
+        Err(_) => return Err("SCM_SERVICE_UNAVAILABLE".into()),
+    };
+    let checked = CheckedService {
+        service: &service,
+        image,
+    };
+    let (_state, _process) = checked.verify()?;
+    let mut config = configuration_at(image.into())?;
+    config.start_type = match mode {
+        crate::installation::StartMode::Automatic => ServiceStartType::AutoStart,
+        crate::installation::StartMode::Manual => ServiceStartType::OnDemand,
+        crate::installation::StartMode::Disabled => ServiceStartType::Disabled,
+    };
+    scm(service.change_config(&config))
+}
+pub(crate) fn verify_running_configuration(image: &std::path::Path) -> Result<(), String> {
+    let manager = scm(ServiceManager::local_computer(
+        None::<&str>,
+        ServiceManagerAccess::CONNECT,
+    ))?;
+    let service = scm(manager.open_service(
+        NAME,
+        ServiceAccess::QUERY_CONFIG | ServiceAccess::QUERY_STATUS,
+    ))?;
+    let checked = CheckedService {
+        service: &service,
+        image,
+    };
+    let (state, _process) = checked.verify()?;
+    let config = scm(service.query_config())?;
+    if state != ServiceState::Running
+        || config.start_type != ServiceStartType::AutoStart
+        || !matches_install(&config, image)
+        || !matches_recovery(&scm(service.get_failure_actions())?)
+        || !scm(service.get_failure_actions_on_non_crash_failures())?
+    {
+        return Err("SCM_FINAL_CONFIGURATION_REJECTED".into());
     }
     Ok(())
 }

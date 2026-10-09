@@ -66,7 +66,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($manifest in @('src-tauri/Cargo.toml', 'crates/core/Cargo.toml', 'crates/link/Cargo.toml', 'crates/agent/Cargo.toml')) {
+          foreach ($manifest in @('src-tauri/Cargo.toml', 'crates/core/Cargo.toml', 'crates/link/Cargo.toml', 'crates/agent/Cargo.toml', 'crates/session-helper/Cargo.toml')) {
             cargo check --locked --manifest-path $manifest
             if ($LASTEXITCODE -ne 0) { throw "Cargo check falhou: $manifest" }
           }
@@ -76,6 +76,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Testes Link falharam' }
           cargo test --locked --manifest-path crates/agent/Cargo.toml
           if ($LASTEXITCODE -ne 0) { throw 'Testes Agent falharam' }
+          cargo test --locked --manifest-path crates/session-helper/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Testes Helper falharam' }
           cargo test --locked --manifest-path src-tauri/Cargo.toml --example verify-update
           if ($LASTEXITCODE -ne 0) { throw 'Testes do verificador de assinatura falharam' }
           git diff --check
@@ -116,6 +118,8 @@ jobs:
           $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File)
           if ($installers.Count -ne 1) { throw 'Era esperado exatamente um instalador NSIS.' }
           $installer = $installers[0].FullName
+          node scripts/client-bundle.mjs inspect "$installer"
+          if ($LASTEXITCODE -ne 0) { throw 'Pacote Cliente/Agent/Helper incompleto ou divergente; a Release continuará draft.' }
           $signature = "$installer.sig"
           if (!(Test-Path -LiteralPath $signature)) { throw 'Assinatura NSIS ausente.' }
           $version = $env:RELEASE_TAG.Substring(1)

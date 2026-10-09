@@ -16,8 +16,8 @@ use windows_sys::Win32::{
 
 mod image_security;
 pub mod lifecycle;
-pub use image_security::trusted_image;
 use image_security::TrustedImage;
+pub use image_security::{trusted_directory, trusted_image};
 
 pub struct Handle(pub HANDLE);
 impl Handle {

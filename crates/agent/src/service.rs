@@ -16,7 +16,7 @@ use windows_service::{
     service_dispatcher,
 };
 pub const NAME: &str = "CentralSOSAgent";
-mod installer;
+pub(crate) mod installer;
 pub use installer::installer_command;
 define_windows_service!(ffi_service_main, service_main);
 pub fn dispatch() -> windows_service::Result<()> {

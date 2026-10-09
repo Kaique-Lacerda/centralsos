@@ -1,5 +1,9 @@
 # Lifecycle do Agent e Session Helper
 
+Empacotamento/upgrade/uninstall por máquina: [Instalador Cliente + Agent + Helper](client-agent-installer.md).
+O NSIS reutiliza estas rotinas SCM e exige recuperação de transação pendente antes de nova
+instalação. Não altera a autenticação do pipe nem o mecanismo de supervisão.
+
 ## Arquitetura anterior e nova
 
 O Agent já tinha dispatcher/Stop/Shutdown do SCM, polling HTTPS, heartbeat independente,
