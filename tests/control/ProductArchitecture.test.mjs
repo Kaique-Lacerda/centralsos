@@ -158,7 +158,10 @@ test('build seleciona entrypoint isolado; Tauri é Cliente e Vercel é Web sem c
     assert.equal(getProductBuild('production'), getProductBuild('web'));
     assert.throws(() => getProductBuild('unknown'), /desconhecido/);
     const tauri = JSON.parse(await readFile('src-tauri/tauri.conf.json', 'utf8'));
-    assert.equal(tauri.build.beforeBuildCommand, 'npm run build:client');
+    assert.equal(tauri.build.beforeBuildCommand, 'node scripts/client-bundle.mjs prepare');
+    assert.equal(tauri.build.beforeBundleCommand, 'node scripts/client-bundle.mjs finalize');
+    const clientBundle = await readFile('scripts/client-bundle.mjs', 'utf8');
+    assert.match(clientBundle, /'build', '--mode', 'client'/);
     assert.equal(tauri.build.beforeDevCommand, 'npm run dev:client');
     assert.equal(tauri.build.frontendDist, '../dist/client');
     assert.equal(tauri.build.devUrl, `http://localhost:${getProductBuild('client').port}`);

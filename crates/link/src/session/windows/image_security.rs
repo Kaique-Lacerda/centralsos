@@ -171,6 +171,13 @@ impl Drop for Descriptor {
 }
 
 pub fn trusted_image(path: &Path) -> Result<TrustedImage> {
+    trusted_object(path, false)
+}
+/// Same owner/DACL/reparse/ancestor policy, with installation-directory mutation rights.
+pub fn trusted_directory(path: &Path) -> Result<TrustedImage> {
+    trusted_object(path, true)
+}
+fn trusted_object(path: &Path, directory: bool) -> Result<TrustedImage> {
     let mut components = path.components();
     if !matches!(components.next(), Some(Component::Prefix(p)) if matches!(p.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_)))
         || !matches!(components.next(), Some(Component::RootDir))
@@ -184,7 +191,9 @@ pub fn trusted_image(path: &Path) -> Result<TrustedImage> {
     }
     let mut objects = Vec::new();
     for (depth, target) in path.ancestors().enumerate() {
-        let role = if depth == 0 {
+        let role = if depth == 0 && directory {
+            ObjectRole::Installation
+        } else if depth == 0 {
             ObjectRole::Image
         } else if depth == 1 {
             ObjectRole::Installation
@@ -218,10 +227,10 @@ pub fn trusted_image(path: &Path) -> Result<TrustedImage> {
             if info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 return Err(fail("Reparse point recusado"));
             }
-            if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0) != (depth > 0) {
+            if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0) != (depth > 0 || directory) {
                 return Err(fail("Tipo de objeto não corresponde à imagem/caminho"));
             }
-            if depth == 0 && info.nNumberOfLinks != 1 {
+            if depth == 0 && !directory && info.nNumberOfLinks != 1 {
                 return Err(fail(
                     "Imagem com hardlinks/contagem de links não verificável",
                 ));

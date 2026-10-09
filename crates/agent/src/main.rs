@@ -1,5 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod engine;
+mod installation;
 mod journal;
 mod lifecycle;
 mod logging;

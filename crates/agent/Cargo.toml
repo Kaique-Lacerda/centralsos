@@ -3,6 +3,8 @@ name = "central-sos-agent"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+[build-dependencies]
+serde_json = "1"
 [dependencies]
 central-sos-core = { path = "../core" }
 central-sos-link = { path = "../link" }
@@ -15,3 +17,4 @@ sha2 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.8"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_UI_Shell"] }

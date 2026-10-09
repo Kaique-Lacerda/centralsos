@@ -124,7 +124,16 @@ pub struct ServiceProcess {
     _image: TrustedImage,
 }
 pub fn administrative_service_process(pid: u32) -> Result<ServiceProcess> {
-    let (process, identity) = process_identity(pid)?;
+    administrative_service_process_at(pid, &expected_sibling(AGENT_IMAGE)?)
+}
+/// Read-only process verification for the fixed, locally derived installation image.
+/// No remote command or IPC exposes this path parameter.
+pub fn administrative_service_process_at(pid: u32, expected: &Path) -> Result<ServiceProcess> {
+    let process = Handle::checked(
+        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, 0, pid) },
+        ErrorCode::SessionPeerRejected,
+    )?;
+    let identity = token_identity(process_token(process.0)?.0)?;
     if identity.user_sid != "S-1-5-18"
         || identity.session_id != 0
         || unsafe { GetProcessId(process.0) } != pid
@@ -134,11 +143,19 @@ pub fn administrative_service_process(pid: u32) -> Result<ServiceProcess> {
             "Identidade SCM divergente",
         ));
     }
-    let image = check_image(process.0, &expected_sibling(AGENT_IMAGE)?)?;
+    let image = check_image(process.0, expected)?;
     Ok(ServiceProcess {
         _process: process,
         _image: image,
     })
+}
+impl ServiceProcess {
+    pub fn wait_exit(&self) -> Result<()> {
+        if unsafe { WaitForSingleObject(self._process.0, 30_000) } != WAIT_OBJECT_0 {
+            return Err(error(ErrorCode::SessionTimeout, "SCM_PROCESS_EXIT_TIMEOUT"));
+        }
+        Ok(())
+    }
 }
 
 struct Environment(*mut c_void);

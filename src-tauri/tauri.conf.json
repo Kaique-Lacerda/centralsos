@@ -6,7 +6,8 @@
   "build": {
     "beforeDevCommand": "npm run dev:client",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build:client",
+    "beforeBuildCommand": "node scripts/client-bundle.mjs prepare",
+    "beforeBundleCommand": "node scripts/client-bundle.mjs finalize",
     "frontendDist": "../dist/client",
     "windows": { "staticVCRuntime": true }
   },
@@ -28,11 +29,18 @@
   },
   "bundle": {
     "createUpdaterArtifacts": true,
-    "windows": { "allowDowngrades": false },
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": { "type": "skip" },
+      "nsis": {
+        "installMode": "perMachine",
+        "compression": "none",
+        "installerHooks": "windows/client-agent-hooks.nsh"
+      }
+    },
     "active": true,
     "targets": [
-      "nsis",
-      "msi"
+      "nsis"
     ],
     "shortDescription": "Central de suporte técnico",
     "category": "Utility",

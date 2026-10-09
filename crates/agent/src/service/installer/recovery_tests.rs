@@ -17,6 +17,7 @@ struct Fake {
     delete_failure: Cell<bool>,
     stop_failure: Cell<bool>,
     timeout: Cell<bool>,
+    process_exit_timeout: Cell<bool>,
     calls: RefCell<Vec<&'static str>>,
     pins: Rc<Cell<usize>>,
 }
@@ -30,6 +31,7 @@ impl Fake {
             delete_failure: Cell::new(false),
             stop_failure: Cell::new(false),
             timeout: Cell::new(false),
+            process_exit_timeout: Cell::new(false),
             calls: RefCell::new(vec![]),
             pins: Rc::new(Cell::new(0)),
         }
@@ -85,6 +87,26 @@ impl RecoveryService for Fake {
         }
         Ok(())
     }
+    fn wait_process_exit(&self, _guard: &ProcessPin) -> Result<(), String> {
+        assert!(self.pins.get() > 0);
+        if self.process_exit_timeout.get() {
+            Err("SCM_PROCESS_EXIT_TIMEOUT".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[test]
+fn scm_stopped_is_not_proof_of_process_exit() {
+    let service = Fake::new(ServiceState::Running);
+    service.process_exit_timeout.set(true);
+    assert_eq!(
+        recover("--stop-service", Some(&service)).unwrap_err(),
+        "SCM_PROCESS_EXIT_TIMEOUT"
+    );
+    assert!(!service.calls.borrow().contains(&"delete"));
+    assert_eq!(service.pins.get(), 0);
 }
 
 #[test]
