@@ -5,6 +5,8 @@
   "devCommand": "npm run dev:web",
   "outputDirectory": "dist/web",
   "rewrites": [
+    { "source": "/api/control/:path*", "destination": "/api/control" },
+    { "source": "/api/agent/:path*", "destination": "/api/agent" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ]
 }

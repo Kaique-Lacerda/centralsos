@@ -20,7 +20,9 @@ function escape(value: string) { return value.replace(/[&<>"']/g, character => (
 function html(res: ServerResponse, content: string) {
     res.setHeader('Content-Type','text/html; charset=utf-8');
     res.setHeader('Content-Security-Policy',"default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-    res.setHeader('Referrer-Policy','no-referrer');
+    // no-referrer turns a navigation form POST's Origin into "null" (Fetch).
+    // same-origin preserves the strict Origin check without cross-origin referrers.
+    res.setHeader('Referrer-Policy','same-origin');
     res.setHeader('X-Frame-Options','DENY');
     res.end(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Autorizar CENTRAL SOS Suporte</title><main>${content}</main></html>`);
 }

@@ -12,6 +12,7 @@ test('HTTP native: navegador externo → confirmação HTML → resgate e logout
     const s=started.body,proof={transactionId:s.transactionId,deviceCode:s.deviceCode,codeVerifier:verifier};
     const authorize=await request(f,prefix+'/authorize?user_code='+s.userCode);
     assert.equal(authorize.statusCode,302); assert.match(authorize.headers.location,/^https:\/\/identity\.example\.test/);
+    assert.equal(authorize.headers['referrer-policy'],'no-referrer');
     assert.ok(!authorize.headers.location.includes(s.deviceCode));
     const exchange=f.issue(authorize.headers.location);
     assert.match(authorize.headers['set-cookie'],/HttpOnly; Secure; SameSite=Lax; Path=\//);assert.ok(!authorize.headers['set-cookie'].includes('Domain='));
@@ -22,6 +23,7 @@ test('HTTP native: navegador externo → confirmação HTML → resgate e logout
     const page=await request(f,prefix+'/confirm?id='+s.transactionId,{headers:{cookie:grantCookie}});
     assert.match(page.raw,/&lt;img/); assert.ok(!page.raw.includes('<img')); assert.match(page.raw,new RegExp(s.userCode));
     assert.match(page.headers['content-security-policy'],/frame-ancestors 'none'/);
+    assert.equal(page.headers['referrer-policy'],'same-origin');
     const confirmation={transactionId:s.transactionId,csrfToken:field(page.raw,'csrfToken'),userCode:s.userCode,confirmed:true};
     const rejected=await request(f,prefix+'/confirm',{method:'POST',headers:{'content-type':'application/json',cookie:grantCookie,origin:'https://evil.example'},body:confirmation});
     assert.equal(rejected.statusCode,403); assert.equal(rejected.body.code,'CSRF_REJECTED');
@@ -36,6 +38,26 @@ test('HTTP native: navegador externo → confirmação HTML → resgate e logout
     assert.equal((await request(f,'/environments',{headers})).body.length,1);
     assert.equal((await request(f,prefix+'/logout',{method:'POST',headers})).body.revoked,true);
     assert.equal((await request(f,'/devices',{headers})).body.code,'SESSION_REVOKED');
+});
+
+test('HTTP confirmação: política preserva Origin do formulário sem aceitar null, ausência ou outra origem', async () => {
+    const f=fixture(), login=await f.start(), browser=await f.browser(login);
+    const grantCookie='__Host-sos-native-browser='+browser.grant.browser;
+    const page=await request(f,prefix+'/confirm?id='+login.started.transactionId,{headers:{cookie:grantCookie}});
+    const confirmation={...browser.input,csrfToken:field(page.raw,'csrfToken')};
+    assert.equal(page.headers['referrer-policy'],'same-origin');
+    assert.match(page.headers['content-security-policy'],/form-action 'self'/);
+    for (const rejectedOrigin of [undefined,'null','https://evil.example']) {
+        const rejected=await request(f,prefix+'/confirm',{method:'POST',headers:{'content-type':'application/json',cookie:grantCookie,...(rejectedOrigin===undefined?{}:{origin:rejectedOrigin})},body:confirmation});
+        assert.equal(rejected.statusCode,403);
+        assert.equal(rejected.body.code,'CSRF_REJECTED');
+        f.advance(5000);
+        assert.equal((await f.auth.status(login.proof)).state,'pending');
+    }
+    const accepted=await request(f,prefix+'/confirm',{method:'POST',headers:{'content-type':'application/json',cookie:grantCookie,origin},body:confirmation});
+    assert.equal(accepted.statusCode,200);
+    f.advance(5000);
+    assert.equal((await f.auth.status(login.proof)).state,'approved');
 });
 test('HTTP native: nenhum cookie/Origin, credencial Agent ou token em query é aceito',async()=>{
     const f=fixture(), c=await f.credential(),headers={...nativeHeaders,authorization:'Bearer '+c.accessToken};

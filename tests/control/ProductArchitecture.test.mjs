@@ -168,8 +168,17 @@ test('build seleciona entrypoint isolado; Tauri é Cliente e Vercel é Web sem c
     const vercel = JSON.parse(await readFile('vercel.json', 'utf8'));
     assert.equal(vercel.buildCommand, 'npm run build:web');
     assert.equal(vercel.outputDirectory, 'dist/web');
-    const fallback = new RegExp(`^${vercel.rewrites[0].source}$`);
+    const fallbackRule = vercel.rewrites.find(rule => rule.destination === '/index.html');
+    assert.ok(fallbackRule);
+    const fallback = new RegExp(`^${fallbackRule.source}$`);
     for (const path of ['/api', '/api/control/devices', '/api/agent/heartbeat', '/api/tools-manifest', '/api/app-update']) assert.equal(fallback.test(path), false, path);
     for (const path of ['/', '/download/client', '/download/support', '/tools', '/api-public']) assert.equal(fallback.test(path), true, path);
+    for (const area of ['control', 'agent']) {
+        const rewrite = vercel.rewrites.find(rule => rule.source === `/api/${area}/:path*`);
+        assert.deepEqual(rewrite, { source: `/api/${area}/:path*`, destination: `/api/${area}` });
+        assert.ok(vercel.rewrites.indexOf(rewrite) < vercel.rewrites.indexOf(fallbackRule));
+        await access(`api/${area}.ts`);
+        assert.match(await readFile(`api/${area}.ts`, 'utf8'), /export \{ handleControlApi as default \} from '\.\.\/server\/control\/HttpApi\.js';/);
+    }
     for (const path of ['api/control/[...path].ts', 'api/agent/[...path].ts', 'api/tools-manifest.ts', 'api/app-update.ts']) await access(path);
 });
