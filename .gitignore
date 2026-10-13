@@ -31,3 +31,4 @@ secrets/
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+.vercel/

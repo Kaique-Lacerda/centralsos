@@ -41,7 +41,8 @@ test('Web não importa Control, Tauri, enrollment nem serviços Windows locais',
     assert.doesNotMatch(graph, /@tauri-apps|pages\/control|services\/control|services\/runtime|services\/updater/);
     assert.doesNotMatch(graph, /src\/services\/(?:printers|network|snapshot|validation|diagnosis|support|windows|windows-services|system|processes|storage)\//);
     assert.doesNotMatch(graph, /src\/tools\/registry|src\/pages\//);
-    assert.match(graph, /GitHubToolsService/);
+    assert.doesNotMatch(graph, /GitHubToolsService|components\/ToolCatalog/);
+    assert.match(graph, /catalog\/CatalogApi/);
     assert.match(graph, /GitHubReleaseService/);
 });
 
@@ -108,11 +109,15 @@ test('rotas são próprias: /control somente no Suporte, rotas públicas não si
 
 test('portal distingue os produtos; Suporte indisponível não reutiliza instalador do Cliente', async () => {
     const { PortalHome, SupportDownloadPage } = await load('src/apps/web/PortalPages.tsx');
-    const home = renderToStaticMarkup(createElement(StaticRouter, {}, createElement(PortalHome)));
+    const { CatalogAccess } = await load('src/apps/web/catalog/CatalogAccess.tsx');
+    const guarded = renderToStaticMarkup(createElement(StaticRouter,{},createElement(CatalogAccess,{},createElement(PortalHome))));
+    assert.doesNotMatch(guarded,/Baixar Cliente|Ferramentas homologadas/);
+    const { PortalHero } = await load('src/apps/web/components/PortalHero.tsx');
+    const home = renderToStaticMarkup(createElement(PortalHero,{resource:{data:null,loading:true,error:'',refresh(){}}}));
     assert.match(home, /Baixar Cliente/);
     assert.match(home, /Baixar Suporte/);
-    assert.match(home, /id="tools"/);
-    assert.match(home, /Ferramentas/);
+    const catalog = await readFile('src/apps/web/catalog/ManagedCatalogPage.tsx','utf8');
+    assert.match(catalog, /id="tools"/); assert.match(catalog,/Ferramentas/);
     assert.doesNotMatch(home, /href="\/download\/(?:client|support)"|href="\/tools"/);
     assert.doesNotMatch(home, /href="\/control"|href="\/settings"/);
     const support = renderToStaticMarkup(createElement(SupportDownloadPage));
@@ -176,8 +181,11 @@ test('build seleciona entrypoint isolado; Tauri é Cliente e Vercel é Web sem c
     const vercel = JSON.parse(await readFile('vercel.json', 'utf8'));
     assert.equal(vercel.buildCommand, 'npm run build:web');
     assert.equal(vercel.outputDirectory, 'dist/web');
-    const fallback = new RegExp(`^${vercel.rewrites[0].source}$`);
-    for (const path of ['/api', '/api/control/devices', '/api/agent/heartbeat', '/api/tools-manifest', '/api/app-update']) assert.equal(fallback.test(path), false, path);
+    const fallbackRules = vercel.rewrites.filter(rule => rule.destination === '/index.html');
+    assert.equal(fallbackRules.length, 1);
+    const fallback = new RegExp(`^${fallbackRules[0].source}$`);
+    for (const path of ['/api', '/api/control/devices', '/api/agent/heartbeat', '/api/tools-manifest', '/api/app-update', '/api/catalog/session']) assert.equal(fallback.test(path), false, path);
+    assert.ok(vercel.rewrites.some(rule => rule.source === '/api/catalog/:path*' && rule.destination === '/api/catalog'));
     for (const path of ['/', '/download/client', '/download/support', '/tools', '/api-public']) assert.equal(fallback.test(path), true, path);
     for (const path of ['api/control/[...path].ts', 'api/agent/[...path].ts', 'api/tools-manifest.ts', 'api/app-update.ts']) await access(path);
 });

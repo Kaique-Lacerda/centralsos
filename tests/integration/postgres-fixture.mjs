@@ -8,7 +8,7 @@ import { Pool } from 'pg';
 /** Starts a NEW disposable cluster using explicitly supplied local binaries.
  * Never reads any production or test database URL, and never registers a service.
  * All processes/SQL target this cluster, bound exclusively to IPv4 loopback. */
-export async function postgresFixture(bin) {
+export async function postgresFixture(bin, { commandTimeout = 30000, waitSeconds = 15 } = {}) {
     const root = resolve('.control-build');
     await mkdir(root, { recursive: true });
     const directory = await mkdtemp(join(root, 'postgres-test-'));
@@ -17,7 +17,7 @@ export async function postgresFixture(bin) {
     const binary = name => join(resolve(bin), name + (process.platform === 'win32' ? '.exe' : ''));
     // pg_ctl's server can inherit pipe handles on Windows, keeping spawnSync
     // waiting after pg_ctl exits. Server diagnostics go to its private log.
-    const run = (name, args) => execFileSync(binary(name), args, { windowsHide: true, stdio: name === 'pg_ctl' ? 'ignore' : 'pipe', timeout: 30000 });
+    const run = (name, args) => execFileSync(binary(name), args, { windowsHide: true, stdio: name === 'pg_ctl' ? 'ignore' : 'pipe', timeout: commandTimeout });
     const probe = createServer();
     await new Promise((ok, fail) => { probe.once('error', fail); probe.listen(0, '127.0.0.1', ok); });
     const port = probe.address().port;
@@ -27,7 +27,7 @@ export async function postgresFixture(bin) {
     let starting = false;
     async function close() {
         try { await Promise.all(pools.map(pool => pool.end())); }
-        finally { if (starting) run('pg_ctl', ['-D', data, '-w', '-t', '15', 'stop', '-m', 'fast']); }
+        finally { if (starting) run('pg_ctl', ['-D', data, '-w', '-t', String(waitSeconds), 'stop', '-m', 'fast']); }
     }
     try {
         await writeFile(passwordFile, password, { mode: 0o600 });
@@ -36,7 +36,7 @@ export async function postgresFixture(bin) {
         try { run('initdb', ['-D', data, '-U', 'control_test', '--auth=scram-sha-256', '--pwfile=' + passwordFile, '--encoding=UTF8', '--locale=C', '--no-sync']); }
         finally { await unlink(passwordFile); }
         starting = true;
-        run('pg_ctl', ['-D', data, '-l', join(directory, 'postgres.log'), '-w', '-t', '15', 'start', '-o', `-h 127.0.0.1 -p ${port}`]);
+        run('pg_ctl', ['-D', data, '-l', join(directory, 'postgres.log'), '-w', '-t', String(waitSeconds), 'start', '-o', `-h 127.0.0.1 -p ${port}`]);
         const bootstrap = new Pool({ ...options, database: 'postgres' }); pools.push(bootstrap);
         // Prove the connected server owns our generated data directory before DDL.
         const actual = (await bootstrap.query('SHOW data_directory')).rows[0].data_directory;
