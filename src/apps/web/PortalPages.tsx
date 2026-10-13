@@ -3,25 +3,22 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { distributionProducts } from '../../services/distribution/products';
 import { getLatestWindowsRelease } from '../../services/releases/GitHubReleaseService';
-import { getGitHubToolsCatalog } from '../../services/tools/GitHubToolsService';
 import { usePortalResource } from './usePortalResource';
 import { PortalHero } from './components/PortalHero';
-import { ToolCatalog } from './components/ToolCatalog';
+import { ManagedCatalogPage } from './catalog/ManagedCatalogPage';
 
 const loadClient = (refresh: boolean) => getLatestWindowsRelease({ refresh });
-const loadTools = (refresh: boolean) => getGitHubToolsCatalog({ refresh, runtime: 'web' });
 
 export function PortalHome() {
     const client = usePortalResource(loadClient);
-    const tools = usePortalResource(loadTools);
     const { hash } = useLocation();
     useEffect(() => {
         // Wait for the final page height before scrolling legacy public links.
-        if ((hash !== '#tools' && hash !== '#downloads') || client.loading || tools.loading) return;
+        if ((hash !== '#tools' && hash !== '#downloads') || client.loading) return;
         const frame = requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView());
         return () => cancelAnimationFrame(frame);
-    }, [hash, client.loading, tools.loading]);
-    return <><PortalHero resource={client} /><ToolCatalog resource={tools} /></>;
+    }, [hash, client.loading]);
+    return <><PortalHero resource={client} /><ManagedCatalogPage /></>;
 }
 export function SupportDownloadPage() {
     return <><div className="heading"><small>APLICATIVO DO TÉCNICO</small><h1>{distributionProducts.support.name}</h1><p>{distributionProducts.support.description}</p></div>

@@ -2,13 +2,18 @@ import { Outlet } from 'react-router-dom';
 import { getProductRuntime } from '../product';
 import emblem from './assets/emblem-brand.webp';
 import './portal.css';
+import { useState } from 'react';
+import { useCatalogAccess } from './catalog/CatalogAccess';
 
 const runtime = getProductRuntime('web', 'web');
 export function WebShell() {
+    const { session, logout } = useCatalogAccess();
+    const [error, setError] = useState('');
     return <div className="public-portal" data-product={runtime.product} data-runtime={runtime.identity}>
         <a className="portal-skip-link" href="#portal-main">Pular para o conteúdo</a>
-        <header className="portal-header"><div className="portal-container"><a className="portal-brand" href="/" aria-label="CENTRAL SOS — início"><img src={emblem} alt="" width="46" height="46" /><strong>CENTRAL <span>SOS</span></strong></a></div>
+        <header className="portal-header"><div className="portal-container"><a className="portal-brand" href="/" aria-label="CENTRAL SOS — início"><img src={emblem} alt="" width="46" height="46" /><strong>CENTRAL <span>SOS</span></strong></a><div className="catalog-portal-nav"><span>{session.role === 'admin' ? 'Administrador' : 'Técnico'}</span>{session.role === 'admin' && <a className="portal-tool-download catalog-entry" href="/#tools">Gerenciar ferramentas</a>}<button className="portal-refresh" onClick={() => void logout().catch(failure => setError(failure.message))}>Sair</button></div></div>
         </header>
+        {error && <p role="alert" className="portal-container catalog-error">{error}</p>}
         <main id="portal-main" tabIndex={-1}><Outlet /></main>
         <footer className="portal-footer">CENTRAL SOS · Distribuição de aplicativos e ferramentas homologadas</footer>
     </div>;

@@ -1,6 +1,6 @@
 # CENTRAL SOS
 
-O repositório reúne três frontends independentes: CENTRAL SOS Cliente (Desktop Windows existente), CENTRAL SOS Suporte (prévia Web do Control) e Web público (portal de distribuição). A coleta de dados e as ferramentas locais Windows continuam somente no Cliente Desktop.
+O repositório reúne três frontends independentes: CENTRAL SOS Cliente (Desktop Windows existente), CENTRAL SOS Suporte (prévia Web do Control) e portal Web de distribuição com acesso autenticado ao catálogo. A coleta de dados e as ferramentas locais Windows continuam somente no Cliente Desktop.
 
 ## Arquitetura
 
@@ -11,7 +11,7 @@ React + TypeScript renderiza cada produto a partir de seu próprio entrypoint/ro
 - React, TypeScript, Vite, React Router
 - Tailwind CSS e Lucide React
 - Tauri 2, Rust, `sysinfo` e WMI tipado (`wmi`, somente Windows)
-- Web público: distribuição do Cliente e ferramentas homologadas; Suporte aparece em desenvolvimento.
+- Portal Web: distribuição do Cliente e catálogo único persistido em PostgreSQL, após login Técnico/Administrador; Suporte respeita a disponibilidade real de seu instalador.
 - Suporte: prévia Web independente do Control, usando o transporte/auth browser same-origin existente.
 - Cliente no browser: prévia sem acesso aos dados locais.
 - Desktop: coleta real de sistema, discos, rede, impressoras e validações locais em Windows. A resposta preserva erros parciais por seção.
@@ -56,7 +56,15 @@ git commit -m "Descreve a alteração"
 git push -u origin feature/nome-da-alteracao
 ```
 
-Use `npm run dev:web` para o portal, `npm run dev:support` para a prévia do Control e `npm run tauri:dev` para Desktop Cliente. `npm run dev` continua como alias da prévia Cliente; `npm run build` é o portal público (`dist/web`). Tauri usa explicitamente `build:client` (`dist/client`). Não adicione arquivos `.env` ou credenciais ao Git; use `.env.example` apenas com nomes de variáveis e valores fictícios/não secretos.
+Use `npm run dev:web` para o portal, `npm run dev:support` para a prévia do Control e `npm run tauri:dev` para Desktop Cliente. `npm run dev` continua como alias da prévia Cliente; `npm run build` gera o portal (`dist/web`). Tauri usa explicitamente `build:client` (`dist/client`). Não adicione arquivos `.env` ou credenciais ao Git; use `.env.example` apenas com nomes de variáveis e valores fictícios/não secretos.
+
+### Catálogo autenticado
+
+A home `/` usa uma única listagem PostgreSQL. `/catalog` e `/tools` mantêm compatibilidade por redirecionamento. Técnicos consultam/baixam; administradores gerenciam categorias, metadados, arquivos privados, publicação e auditoria na mesma experiência. A autenticação por senha do catálogo é isolada do Google OIDC do Control.
+
+O comando `npm.cmd run dev:web -- --port 1423` inicia API e Vite juntos em `https://localhost:1423/`, somente em loopback, usando a configuração privada de homologação já preparada. Em outra máquina, preparar os caminhos de configuração, recursos autorizados e certificado confiável descritos em [Catálogo Web](docs/tools-catalog.md); o comando não assume credenciais nem executa migrations/bootstrap automaticamente.
+
+Antes de merge/deployment, seguir o [checklist de implantação e rollback](docs/tools-catalog-deployment.md). Produção precisa de PostgreSQL, Blob privado, origem, segredo e senhas próprios; não reutilizar recursos de homologação. Aplicação de schema/dados exige autorização específica. Arquivos legados de Releases GitHub públicas não se tornam privados por causa do login do portal.
 
 ## Estrutura
 

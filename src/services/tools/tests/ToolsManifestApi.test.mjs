@@ -94,7 +94,8 @@ test('a Function compilada em ESM resolve o módulo server pelo specifier .js', 
     const { default: handler } = await import(`${pathToFileURL(compiledApi).href}?esm-smoke=${Date.now()}`);
     const res = responseSink();
     await handler({ method: 'GET' }, res);
-    assert.equal(res.statusCode, 400);
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.headers['Cache-Control'], 'no-store');
   } finally {
     await rm(outputRoot, { recursive: true, force: true });
   }

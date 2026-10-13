@@ -4,7 +4,9 @@
   "buildCommand": "npm run build:web",
   "devCommand": "npm run dev:web",
   "outputDirectory": "dist/web",
+  "functions": { "api/catalog.ts": { "maxDuration": 120 } },
   "rewrites": [
+    { "source": "/api/catalog/:path*", "destination": "/api/catalog" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ]
 }

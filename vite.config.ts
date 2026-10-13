@@ -24,6 +24,8 @@ const appUpdateDevRoute: Plugin = {
 const toolsManifestDevRoute: Plugin = {
   name: 'tools-manifest-dev-route',
   configureServer(server) {
+    let manifestCatalogServices: ReturnType<typeof import('./server/catalog/HttpApi')['catalogServices']> | undefined;
+    server.httpServer?.once('close', () => { void manifestCatalogServices?.pool.end(); });
     server.middlewares.use('/api/tools-manifest', async (request, response) => {
       response.setHeader('Cache-Control', 'no-store');
       response.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -39,6 +41,15 @@ const toolsManifestDevRoute: Plugin = {
       const encodedTag = /(?:^|&)tag=([^&]*)/.exec(query)?.[1];
       let tag: string | null = null;
       try {
+        if (!manifestCatalogServices) manifestCatalogServices = (await import('./server/catalog/HttpApi')).catalogServices();
+        let actor;
+        try { actor = await manifestCatalogServices.auth.authenticate(request.headers.cookie); }
+        catch { actor = null; }
+        if (!actor) {
+          response.statusCode = 401;
+          response.end(JSON.stringify({ code: 'SESSION_REQUIRED', error: 'Entre no CENTRAL SOS para acessar o catálogo.' }));
+          return;
+        }
         if (encodedTag !== undefined) tag = decodeURIComponent(encodedTag.replace(/\+/g, ' '));
       } catch {
         tag = null;
@@ -67,10 +78,21 @@ export default defineConfig(({ mode }) => {
     plugins: [entrypoint, react(), toolsManifestDevRoute, appUpdateDevRoute], clearScreen: false,
     build: { outDir: product.outDir },
     server: {
+      host: mode === 'web' ? '127.0.0.1' : undefined,
       strictPort: true, port: product.port,
       // Rust's own watcher handles this application; avoid watching its build tree from Vite.
       watch: mode === 'support' ? { ignored: ['**/src-tauri-support/**'] } : undefined,
-      proxy: { '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
+      proxy: { '/api/catalog': {
+        target: 'http://127.0.0.1:1432',
+        configure(proxy) {
+          proxy.on('error', (_error, _request, response) => {
+            if ('writeHead' in response && !response.headersSent) {
+              response.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+              response.end(JSON.stringify({ code: 'CATALOG_UNAVAILABLE', error: 'A API do catálogo não está disponível. Inicie frontend e API com npm run dev:web.' }));
+            }
+          });
+        }
+      }, '/api/control': 'http://127.0.0.1:1431', '/api/agent': 'http://127.0.0.1:1431' }
     }
   };
 });

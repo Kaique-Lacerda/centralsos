@@ -1,6 +1,7 @@
 import { loadToolsManifestFromRelease, ToolsManifestProxyError, type ManifestFetcher } from '../server/ToolsManifestProxy.js';
 
 interface VercelRequest {
+  headers?: { cookie?: string };
   method?: string;
   query?: Record<string, string | string[] | undefined>;
 }
@@ -39,4 +40,25 @@ export function createToolsManifestHandler(fetcher?: ManifestFetcher) {
   };
 }
 
-export default createToolsManifestHandler();
+// The legacy manifest is part of the authenticated Web catalog. Native Desktop
+// still reads official GitHub assets independently; Control/Agent/updater are untouched.
+export default async function authenticatedManifest(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!req.headers?.cookie?.includes('__Secure-central_sos_catalog=')) {
+    res.status(401).json({ code: 'SESSION_REQUIRED', error: 'Entre no CENTRAL SOS para acessar o catálogo.' }); return;
+  }
+  try {
+    const { catalogServices } = await import('../server/catalog/HttpApi.js');
+    const actor = await catalogServices().auth.authenticate(req.headers?.cookie);
+    if (!actor) { res.status(401).json({ code: 'SESSION_REQUIRED', error: 'Entre no CENTRAL SOS para acessar o catálogo.' }); return; }
+    const noCacheResponse: VercelResponse = {
+      status(code) { res.status(code); return noCacheResponse; },
+      setHeader(name, value) { if (name.toLowerCase() !== 'cache-control') res.setHeader(name, value); return noCacheResponse; },
+      json(body) { res.json(body); }
+    };
+    await createToolsManifestHandler()(req, noCacheResponse);
+  } catch (error) {
+    const unauthorized = (error as { status?: number })?.status === 401;
+    res.status(unauthorized ? 401 : 503).json({ code: unauthorized ? 'SESSION_REQUIRED' : 'CATALOG_UNAVAILABLE', error: unauthorized ? 'Entre novamente para acessar o catálogo.' : 'Catálogo temporariamente indisponível.' });
+  }
+}
